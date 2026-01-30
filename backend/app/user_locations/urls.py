@@ -4,4 +4,5 @@ from .views import MyLocationView
 
 urlpatterns = [
     path("location", MyLocationView.as_view()),  # /api/me/location
+    path("location/", MyLocationView.as_view()),  # /api/me/location
 ]
