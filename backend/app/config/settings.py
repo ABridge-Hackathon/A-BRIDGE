@@ -19,10 +19,10 @@ REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
-    if h.strip()
-]
+    "localhost",
+    "127.0.0.1",
+    "unrustically-unpalatable-artie.ngrok-free.dev",
+    ]
 CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_CREDENTIALS = True
