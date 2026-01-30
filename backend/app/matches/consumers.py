@@ -9,6 +9,7 @@ from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 from app.common.redis_client import get_redis
+from asgiref.sync import sync_to_async
 
 PEERCOUNT_TTL_SEC = 60 * 30  # 30분
 
@@ -36,30 +37,26 @@ def _extract_token_from_scope(scope) -> str:
     return token_list[0] if token_list else ""
 
 
-def _get_user_from_jwt(token: str):
-    """
-    SimpleJWT로 서명/만료 검증 후 user 조회
-    """
+@sync_to_async
+def _get_user_by_id(user_id: int):
+    User = get_user_model()
+    return User.objects.filter(id=user_id, is_active=True).first()
+
+
+async def _get_user_from_jwt_async(token: str):
     if not token:
         return None
 
     try:
-        # 검증(서명, exp 등). 실패하면 예외
         UntypedToken(token)
-    except (InvalidToken, TokenError):
-        return None
-
-    try:
-        # 토큰 payload 접근 (UntypedToken은 payload를 갖고 있음)
         payload = UntypedToken(token).payload
-        user_id = payload.get("user_id")  # SimpleJWT 기본 claim
+        user_id = payload.get("user_id")
         if not user_id:
             return None
     except Exception:
         return None
 
-    User = get_user_model()
-    return User.objects.filter(id=user_id, is_active=True).first()
+    return await _get_user_by_id(user_id)
 
 
 class SignalingConsumer(AsyncJsonWebsocketConsumer):
@@ -79,9 +76,9 @@ class SignalingConsumer(AsyncJsonWebsocketConsumer):
         self.session_id = self.scope["url_route"]["kwargs"]["session_id"]
         self.room_group_name = f"session_{self.session_id}"
 
-        # ✅ 0) 쿼리스트링 token 인증 (accept 전에!)
+        #  0) 쿼리스트링 token 인증 (accept 전에!)
         token = _extract_token_from_scope(self.scope)
-        user = _get_user_from_jwt(token)
+        user = await _get_user_from_jwt_async(token)
 
         if not user:
             # 4401/4403 같은 커스텀 close code 사용 가능
