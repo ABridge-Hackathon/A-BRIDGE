@@ -14,6 +14,7 @@ from django.utils.timesince import timesince
 from app.transcripts.models import Transcript
 from app.friends.models import Friend
 
+
 def _recent_text(dt):
     if not dt:
         return "-"
@@ -57,10 +58,7 @@ class DashboardView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         q = (self.request.GET.get("q") or "").strip()
 
-        seniors = User.objects.filter(
-            is_active=True,
-            is_welfare_worker=False,  # 복지사는 제외하고 
-        ).order_by("id")
+        seniors = User.objects.all().order_by("id")
 
         if q:
             seniors = seniors.filter(name__icontains=q)
@@ -107,7 +105,7 @@ class DashboardView(TemplateView):
                     "recentText": recent_text,
                     "isNew": is_new,
                 }
-                )
+            )
 
         ctx["me"] = self.request.user
         ctx["total"] = len(items)
@@ -229,6 +227,8 @@ class CallDetailView(TemplateView):
         ctx["analysis"] = analysis
         ctx["lines"] = lines
         return ctx
+
+
 friends = (
     Friend.objects.filter(user_id=senior_id)
     .select_related("friend_user")
