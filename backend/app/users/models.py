@@ -48,6 +48,7 @@ class User(AbstractUser):
     profile_image_url = models.TextField(blank=True, default="")
     is_welfare_worker = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = "phone_number"
     REQUIRED_FIELDS = []  # createsuperuser에서 추가로 요구할 필드(해커톤이면 비워도 OK)

@@ -105,14 +105,14 @@ class RegisterView(APIView):
         if User.objects.filter(phone_number=phone).exists():
             return fail("PHONE_ALREADY_USED", "phone_number already exists", 409)
 
-        user = User.objects.create(
+        user = User.objects.create_user(
             phone_number=phone,
             name=name,
             gender=gender,
             birth_year=int(birth_year),
             address=address,
             profile_image_url=profile_image_url,
-            is_phone_verified=False,  # otp verify에서 True로 바뀜
+            is_phone_verified=False,
         )
         return ok({"userId": user.id})
 
@@ -134,4 +134,3 @@ class WithdrawView(APIView):
         user.is_active = False
         user.save(update_fields=["is_active"])
         return ok({"withdrawn": True})
-
