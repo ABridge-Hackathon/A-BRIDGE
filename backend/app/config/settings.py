@@ -57,7 +57,9 @@ ASGI_APPLICATION = "app.config.routing.application"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [REDIS_URL]},
+        "CONFIG": {
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
+        },
     }
 }
 
@@ -111,3 +113,4 @@ APPEND_SLASH = False
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 AUTH_USER_MODEL = "users.User"
+
