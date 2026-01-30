@@ -30,23 +30,43 @@ class DashboardView(TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         if not _require_welfare_worker(request.user):
-            return redirect("/admin/")  # 또는 로그인 페이지
+            return redirect("/admin/")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         q = (self.request.GET.get("q") or "").strip()
 
-        rel_qs = CareRelation.objects.filter(
-            welfare_worker=self.request.user
-        ).select_related("senior")
+        # 내가 담당하는 어르신
+        seniors = User.objects.filter(
+            care_workers__welfare_worker=self.request.user,
+            is_active=True,
+        ).distinct()
 
-        seniors = [r.senior for r in rel_qs]
         if q:
-            seniors = [s for s in seniors if q in (s.name or "")]
+            seniors = seniors.filter(name__icontains=q)
 
         items = []
         for s in seniors:
+            last_call = (
+                CallLog.objects.filter(senior=s)
+                .select_related("analysis")
+                .order_by("-ended_at")
+                .first()
+            )
+
+            status = "SAFE"
+            status_text = "통화 기록 없음"
+            recent_text = "-"
+            is_new = False
+
+            if last_call:
+                analysis = getattr(last_call, "analysis", None)
+                status = analysis.status if analysis else "SAFE"
+                status_text = analysis.summary if analysis else "분석 없음"
+                recent_text = last_call.ended_at.strftime("%Y.%m.%d %H:%M")
+                is_new = True  # 필요하면 조건 추가 가능
+
             items.append(
                 {
                     "userId": s.id,
@@ -54,9 +74,10 @@ class DashboardView(TemplateView):
                     "age": _calc_age(s),
                     "gender": s.gender,
                     "profileImageUrl": s.profile_image_url or "",
-                    "statusText": "새로운 대화 분석 완료",  # 더미
-                    "isNew": True,  # 더미
-                    "recentText": "방금 전",  # 더미
+                    "status": status,
+                    "statusText": status_text,
+                    "recentText": recent_text,
+                    "isNew": is_new,
                 }
             )
 
@@ -102,6 +123,7 @@ class SeniorDetailView(TemplateView):
         for c in calls:
             analysis = getattr(c, "analysis", None)
             status = analysis.status if analysis else "SAFE"
+            summary = analysis.summary if analysis else "특이사항 없음"
             rows.append(
                 {
                     "callId": c.call_id,
@@ -149,7 +171,18 @@ class CallDetailView(TemplateView):
             return ctx
 
         analysis = getattr(call, "analysis", None)
-        lines = list(call.transcript_lines.all())
+        transcript = Transcript.objects.filter(session_id=call.session_id).first()
+        lines = []
+        if transcript:
+            for i, line in enumerate(transcript.text.split("\n")):
+                lines.append(
+                    {
+                        "speaker": line.split(":")[0],
+                        "text": ":".join(line.split(":")[1:]),
+                        "ts": call.started_at + timezone.timedelta(seconds=i * 10),
+                    }
+                )
+        ctx["lines"] = lines
 
         ctx["call"] = call
         ctx["analysis"] = analysis

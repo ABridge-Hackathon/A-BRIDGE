@@ -30,8 +30,10 @@
               <div class="text-muted small">u_{{ it.userId }}</div>
               <div class="fw-bold fs-5">{{ it.name }}</div>
               <div class="text-muted small">
-                {% if it.isNew %}
-                <span class="dot dot-danger me-1"></span><span class="fw-semibold">New</span>
+                {% if it.status == "DANGER" %}
+                <span class="dot dot-danger me-1"></span>
+                {% elif it.status == "WARNING" %}
+                <span class="dot dot-warning me-1"></span>
                 {% else %}
                 <span class="dot dot-safe me-1"></span>
                 {% endif %}
