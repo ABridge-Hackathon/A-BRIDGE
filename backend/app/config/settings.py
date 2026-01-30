@@ -6,6 +6,13 @@ from dotenv import load_dotenv
 import dj_database_url
 from datetime import timedelta
 
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "authorization",
+]
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # backend/
 load_dotenv(BASE_DIR / ".env")
 
@@ -24,7 +31,7 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 CORS_ALLOW_ALL_ORIGINS = True
-
+CORS_URLS_REGEX = r"^/.*$"
 CORS_ALLOW_CREDENTIALS = True
 
 DATABASES = {
