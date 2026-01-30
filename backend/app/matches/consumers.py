@@ -1,8 +1,12 @@
-# app/matches/consumers.py
 import json
 import hashlib
+from urllib.parse import parse_qs
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.tokens import UntypedToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+
 from app.common.redis_client import get_redis
 
 PEERCOUNT_TTL_SEC = 60 * 30  # 30분
@@ -13,19 +17,54 @@ def _peercount_key(session_id: str) -> str:
 
 
 def _make_ephemeral_user_id(channel_name: str) -> int:
-    """
-    테스트용 임시 userId 생성:
-    - 같은 connection 안에서는 고정
-    - 서로 다른 connection이면 거의 겹치지 않음
-    """
     h = hashlib.sha256(channel_name.encode("utf-8")).hexdigest()
     return int(h[:8], 16)  # 32bit 정수
+
+
+def _extract_token_from_scope(scope) -> str:
+    """
+    ws://<host>/ws/signaling/<sessionId>/?token=<ACCESS_TOKEN>
+    """
+    raw_qs = scope.get("query_string", b"")
+    try:
+        qs = raw_qs.decode("utf-8")
+    except Exception:
+        qs = ""
+    params = parse_qs(qs)
+    token_list = params.get("token") or []
+    return token_list[0] if token_list else ""
+
+
+def _get_user_from_jwt(token: str):
+    """
+    SimpleJWT로 서명/만료 검증 후 user 조회
+    """
+    if not token:
+        return None
+
+    try:
+        # 검증(서명, exp 등). 실패하면 예외
+        UntypedToken(token)
+    except (InvalidToken, TokenError):
+        return None
+
+    try:
+        # 토큰 payload 접근 (UntypedToken은 payload를 갖고 있음)
+        payload = UntypedToken(token).payload
+        user_id = payload.get("user_id")  # SimpleJWT 기본 claim
+        if not user_id:
+            return None
+    except Exception:
+        return None
+
+    User = get_user_model()
+    return User.objects.filter(id=user_id, is_active=True).first()
 
 
 class SignalingConsumer(AsyncJsonWebsocketConsumer):
     """
     WS Signaling Protocol (Front spec)
-      - URL: ws://<host>/ws/signaling/<sessionId>/
+      - URL: ws://<host>/ws/signaling/<sessionId>/?token=<ACCESS_TOKEN>
       - Envelope:
         {
           "type": "...",
@@ -39,8 +78,17 @@ class SignalingConsumer(AsyncJsonWebsocketConsumer):
         self.session_id = self.scope["url_route"]["kwargs"]["session_id"]
         self.room_group_name = f"session_{self.session_id}"
 
-        # ✅ userId 쿼리스트링 제거: 임시 userId 서버가 생성
-        self.user_id = _make_ephemeral_user_id(self.channel_name)
+        # ✅ 0) 쿼리스트링 token 인증 (accept 전에!)
+        token = _extract_token_from_scope(self.scope)
+        user = _get_user_from_jwt(token)
+
+        if not user:
+            # 4401/4403 같은 커스텀 close code 사용 가능
+            await self.close(code=4401)
+            return
+
+        self.user = user
+        self.user_id = user.id  # ✅ fromUserId = 실제 userId
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
@@ -77,7 +125,6 @@ class SignalingConsumer(AsyncJsonWebsocketConsumer):
 
         peer_count = await self._peercount_decr()
 
-        # 먼저 peer-left 브로드캐스트
         await self.channel_layer.group_send(
             room,
             {
@@ -144,8 +191,6 @@ class SignalingConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
-    # ----- group handlers -----
-
     async def signal_message(self, event):
         await self.send_json(event.get("envelope") or {})
 
@@ -172,8 +217,6 @@ class SignalingConsumer(AsyncJsonWebsocketConsumer):
                 "payload": event.get("payload") or {},
             }
         )
-
-    # ----- peercount helpers -----
 
     async def _peercount_get(self) -> int:
         r = get_redis()

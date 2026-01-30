@@ -53,8 +53,8 @@ INSTALLED_APPS = [
     "app.friends",
     "app.matches",
     "app.transcripts",
-     "corsheaders",
-    ]
+    "corsheaders",
+]
 
 
 ASGI_APPLICATION = "app.config.routing.application"
@@ -80,6 +80,7 @@ from datetime import timedelta
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
+    "SIGNING_KEY": os.environ.get("JWT_SECRET", SECRET_KEY),
 }
 
 MIDDLEWARE = [
