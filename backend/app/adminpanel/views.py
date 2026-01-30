@@ -12,7 +12,7 @@ from app.care.models import CareRelation
 from app.calls.models import CallLog
 from django.utils.timesince import timesince
 from app.transcripts.models import Transcript
-
+from app.friends.models import Friend
 
 def _recent_text(dt):
     if not dt:
@@ -57,11 +57,10 @@ class DashboardView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         q = (self.request.GET.get("q") or "").strip()
 
-        # 내가 담당하는 어르신
         seniors = User.objects.filter(
-            care_workers__welfare_worker=self.request.user,
             is_active=True,
-        ).distinct()
+            is_welfare_worker=False,  # 복지사는 제외하고 
+        ).order_by("id")
 
         if q:
             seniors = seniors.filter(name__icontains=q)
@@ -80,21 +79,21 @@ class DashboardView(TemplateView):
             recent_text = "-"
             is_new = False
 
-        if last_call:
-            analysis = getattr(last_call, "analysis", None)
-            status = analysis.status if analysis else "SAFE"
+            if last_call:
+                analysis = getattr(last_call, "analysis", None)
+                status = analysis.status if analysis else "SAFE"
 
-            # ✅ (3)처럼 문구 고정
-            status_text = _dashboard_status_text(status)
+                # ✅ (3)처럼 문구 고정
+                status_text = _dashboard_status_text(status)
 
-            # ✅ (3)처럼 "방금 전/1시간 전"
-            recent_text = _recent_text(last_call.ended_at)
+                # ✅ (3)처럼 "방금 전/1시간 전"
+                recent_text = _recent_text(last_call.ended_at)
 
-            # ✅ New 뱃지: 예) 최근 24시간 이내면 New
-            if last_call.ended_at:
-                is_new = (
-                    timezone.now() - last_call.ended_at
-                ).total_seconds() <= 60 * 60 * 24
+                # ✅ New 뱃지: 예) 최근 24시간 이내면 New
+                if last_call.ended_at:
+                    is_new = (
+                        timezone.now() - last_call.ended_at
+                    ).total_seconds() <= 60 * 60 * 24
 
             items.append(
                 {
@@ -108,7 +107,7 @@ class DashboardView(TemplateView):
                     "recentText": recent_text,
                     "isNew": is_new,
                 }
-            )
+                )
 
         ctx["me"] = self.request.user
         ctx["total"] = len(items)
@@ -230,3 +229,19 @@ class CallDetailView(TemplateView):
         ctx["analysis"] = analysis
         ctx["lines"] = lines
         return ctx
+friends = (
+    Friend.objects.filter(user_id=senior_id)
+    .select_related("friend_user")
+    .order_by("-created_at")[:50]
+)
+
+ctx["friends"] = [
+    {
+        "id": f.id,
+        "friendId": f.friend_user.id,
+        "friendName": f.friend_user.name,
+        "friendProfileImageUrl": f.friend_user.profile_image_url,
+        "createdAt": f.created_at,
+    }
+    for f in friends
+]

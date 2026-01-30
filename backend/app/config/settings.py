@@ -130,7 +130,7 @@ WSGI_APPLICATION = "app.config.wsgi.application"  # runserver(WGSI)용
 ASGI_APPLICATION = "app.config.routing.application"  # channels(websocket)용
 APPEND_SLASH = False
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / "static"
 AUTH_USER_MODEL = "users.User"
 
 MEDIA_URL = "/media/"
