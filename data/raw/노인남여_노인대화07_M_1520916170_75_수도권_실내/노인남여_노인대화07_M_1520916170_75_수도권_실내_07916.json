@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "암 몇 기가 말기가 (SP:)되어 있더라는 거야 ",
+    "scriptId" : "노인대화-07916",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_07916.wav",
+    "recrdTime" : "6.060",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2020-12-13 00:06:11",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

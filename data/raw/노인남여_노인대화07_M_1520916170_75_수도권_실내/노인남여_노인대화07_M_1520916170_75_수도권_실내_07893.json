@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "하루가 또 막 개운하지 않으니까 힘들어서 ",
+    "scriptId" : "노인대화-07893",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_07893.wav",
+    "recrdTime" : "4.780",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2020-12-13 00:00:13",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

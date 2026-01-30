@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "언니가 마침 이런 시간을 이렇게 갖게 해 줘서 좋다고 했어",
+    "scriptId" : "노인대화-08168",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_08168.wav",
+    "recrdTime" : "6.570",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2021-01-18 11:20:55",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

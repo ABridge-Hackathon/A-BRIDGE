@@ -1,0 +1,14 @@
+# 가상환경 (용량 큼)
+venv/
+env/
+.env
+
+# 파이썬 컴파일 파일 (찌꺼기)
+__pycache__/
+*.pyc
+
+# 맥북 시스템 파일
+.DS_Store
+
+# 결과 파일 (선택사항)
+recommendation_results.json

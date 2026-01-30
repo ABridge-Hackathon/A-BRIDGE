@@ -1,0 +1,13 @@
+project_root/
+├── data/               # 데이터 보관함
+│   ├── raw/            # 건드리지 않을 원본 데이터 (CSV, Excel 등)
+│   ├── processed/      # 전처리가 완료된 정제 데이터
+│   └── external/       # API나 외부에서 추가로 가져온 데이터
+├── notebooks/          # 주피터 노트북 (.ipynb)
+│   ├── 01_eda.ipynb           # 탐색적 데이터 분석용
+│   └── 02_preprocessing.ipynb # 데이터 정제 및 결합용
+├── scripts/            # 실행 가능한 파이썬 스크립트 (.py)
+├── outputs/            # 분석 결과물
+│   ├── figures/        # 시각화 그래프, 차트 이미지
+│   └── reports/        # 최종 요약 리포트
+└── requirements.txt    # 설치된 라이브러리 목록
