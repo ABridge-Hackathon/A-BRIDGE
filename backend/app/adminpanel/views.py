@@ -242,20 +242,3 @@ class CallDetailView(TemplateView):
         ctx["lines"] = lines
         return ctx
 
-
-friends = (
-    Friend.objects.filter(user_id=senior_id)
-    .select_related("friend_user")
-    .order_by("-created_at")[:50]
-)
-
-ctx["friends"] = [
-    {
-        "id": f.id,
-        "friendId": f.friend_user.id,
-        "friendName": f.friend_user.name,
-        "friendProfileImageUrl": f.friend_user.profile_image_url,
-        "createdAt": f.created_at,
-    }
-    for f in friends
-]
