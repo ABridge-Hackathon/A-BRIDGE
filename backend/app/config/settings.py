@@ -6,6 +6,13 @@ from dotenv import load_dotenv
 import dj_database_url
 from datetime import timedelta
 
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "authorization",
+]
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # backend/
 load_dotenv(BASE_DIR / ".env")
 
@@ -18,13 +25,9 @@ REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "unrustically-unpalatable-artie.ngrok-free.dev",
-    ]
+ALLOWED_HOSTS = ["*"]
 CORS_ALLOW_ALL_ORIGINS = True
-
+CORS_URLS_REGEX = r"^/.*$"
 CORS_ALLOW_CREDENTIALS = True
 
 DATABASES = {
@@ -33,6 +36,9 @@ DATABASES = {
         conn_max_age=600,
     )
 }
+CSRF_TRUSTED_ORIGINS = [
+    "https://unrustically-unpalatable-artie.ngrok-free.dev",
+]
 
 INSTALLED_APPS = [
     # django 기본 apps...
