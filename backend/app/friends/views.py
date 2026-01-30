@@ -30,6 +30,30 @@ def presence_key(user_id: int) -> str:
     return f"presence:user:{user_id}"
 
 
+class FriendAddView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # POST /api/friends/add
+    # body: { "targetUserId": 42 }
+    def post(self, request):
+        target_user_id = request.data.get("targetUserId")
+        if not target_user_id:
+            return fail("VALIDATION_ERROR", "targetUserId is required")
+
+        if str(target_user_id) == str(request.user.id):
+            return fail("INVALID_FRIEND", "cannot add yourself")
+
+        target = User.objects.filter(id=target_user_id, is_active=True).first()
+        if not target:
+            return fail("USER_NOT_FOUND", "target user not found", 404)
+
+        obj, created = Friend.objects.get_or_create(
+            user=request.user,
+            friend_user=target,
+        )
+
+        return ok({"added": bool(created)})
+
 class FriendListView(APIView):
     permission_classes = [IsAuthenticated]
 
