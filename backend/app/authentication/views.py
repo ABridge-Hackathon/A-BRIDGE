@@ -302,7 +302,11 @@ class ProfileImageUploadView(APIView):
                 "INVALID_ONBOARDING_TOKEN", "invalid or expired onboardingToken", 401
             )
 
-        img = request.FILES.get("image")
+        img = (
+            request.FILES.get("image")
+            or request.FILES.get("id_image")
+            or request.FILES.get("file")
+        )
         if not img:
             return fail("VALIDATION_ERROR", "image is required")
 
