@@ -30,11 +30,37 @@ def fail(code: str, message: str, http_status: int = 400):
     )
 
 
+def _dbg(request, label: str):
+    """
+    form-data 400 원인 잡는 용:
+    - content-type boundary 포함 여부
+    - request.data / request.FILES 파싱 여부
+    - Authorization 헤더 유무
+    """
+    try:
+        print(f"\n[DBG] {label}")
+        print("  method:", request.method)
+        print("  path:", getattr(request, "path", ""))
+        print("  content-type:", request.content_type)
+        print("  auth:", request.headers.get("Authorization"))
+        print("  data keys:", list(getattr(request, "data", {}).keys()))
+        print("  files keys:", list(getattr(request, "FILES", {}).keys()))
+        # 프론트가 어떤 키로 보내는지 확인용(너무 크면 안 찍힘)
+        if hasattr(request, "data"):
+            # 값까지는 길어서 keys만으로 충분. 필요하면 아래 주석 해제
+            # print("  data:", dict(request.data))
+            pass
+    except Exception as e:
+        print("[DBG] failed:", e)
+
+
 class OtpRequestView(APIView):
     authentication_classes = []
     permission_classes = []
 
     def post(self, request):
+        _dbg(request, "OtpRequestView")
+
         phone = request.data.get("phoneNumber") or request.data.get("phone_number")
         if not phone:
             return fail("VALIDATION_ERROR", "phoneNumber is required")
@@ -50,6 +76,8 @@ class OtpVerifyView(APIView):
     permission_classes = []
 
     def post(self, request):
+        _dbg(request, "OtpVerifyView")
+
         phone = request.data.get("phoneNumber") or request.data.get("phone_number")
         code = request.data.get("code")
         onboarding_token = request.data.get(
@@ -137,16 +165,12 @@ class OtpVerifyView(APIView):
 
 
 class RegisterView(APIView):
-    """
-    현재 스펙에서는 OTP verify에서 onboardingToken 있으면 자동 가입까지 처리하므로
-    register는 '나중에 수정'이면 사실상 미사용이 될 수 있음.
-    (그래도 남겨두고 싶으면 유지)
-    """
-
     authentication_classes = []
     permission_classes = []
 
     def post(self, request):
+        _dbg(request, "RegisterView")
+
         phone = request.data.get("phoneNumber") or request.data.get("phone_number")
         name = request.data.get("name")
         gender = request.data.get("gender")
@@ -191,6 +215,8 @@ class WithdrawView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        _dbg(request, "WithdrawView")
+
         user: User = request.user
         user.is_active = False
         user.save(update_fields=["is_active"])
@@ -202,6 +228,8 @@ class LoginView(APIView):
     permission_classes = []
 
     def post(self, request):
+        _dbg(request, "LoginView")
+
         user_id = request.data.get("userId") or request.data.get("user_id")
         if not user_id:
             return fail("VALIDATION_ERROR", "userId is required")
@@ -220,12 +248,13 @@ class IdCardOcrView(APIView):
 
     # POST /api/auth/idcard/ocr (form-data: image)
     def post(self, request):
+        _dbg(request, "IdCardOcrView")
+
         img = request.FILES.get("image")
         if not img:
             return fail("VALIDATION_ERROR", "image is required")
 
         # 지금은 OCR 연동 전 단계: 더미 + onboardingToken 발급
-        # (요청에 name/gender/birthDate/address가 와도 무시해도 되지만, 있으면 반영해도 괜찮음)
         name = request.data.get("name") or "김순자"
         gender = request.data.get("gender") or "F"
         birth_date = request.data.get("birthDate") or "1953-09-15"
@@ -258,6 +287,8 @@ class ProfileImageUploadView(APIView):
 
     # POST /api/auth/profile-image (form-data: image)
     def post(self, request):
+        _dbg(request, "ProfileImageUploadView")
+
         # 1) onboardingToken: Authorization Bearer or form-data field
         auth = request.headers.get("Authorization", "")
         token = None
@@ -287,7 +318,6 @@ class ProfileImageUploadView(APIView):
         path = f"onboarding_profiles/{token}{ext}"
         saved_path = default_storage.save(path, ContentFile(img.read()))
 
-        # MEDIA_URL 없으면 기본 "/media/" 로 가정
         media_url = getattr(settings, "MEDIA_URL", "/media/")
         if not media_url.endswith("/"):
             media_url += "/"
