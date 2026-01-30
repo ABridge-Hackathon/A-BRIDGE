@@ -126,7 +126,6 @@ class SeniorDetailView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         senior_id = kwargs["senior_id"]
 
-        # 내 담당 어르신만
         ok_rel = CareRelation.objects.filter(
             welfare_worker=self.request.user, senior_id=senior_id
         ).exists()
@@ -138,10 +137,9 @@ class SeniorDetailView(TemplateView):
         ctx["senior"] = senior
         ctx["seniorAge"] = _calc_age(senior)
 
-        # 통화 기록: 최신순
         calls = (
             CallLog.objects.filter(senior_id=senior_id)
-            .select_related("peer", "analysis")  # analysis 추가
+            .select_related("peer", "analysis")
             .order_by("-ended_at", "-started_at")[:50]
         )
 
@@ -149,7 +147,6 @@ class SeniorDetailView(TemplateView):
         for c in calls:
             analysis = getattr(c, "analysis", None)
             status = analysis.status if analysis else "SAFE"
-            summary = analysis.summary if analysis else "특이사항 없음"
             rows.append(
                 {
                     "callId": c.call_id,
@@ -162,8 +159,25 @@ class SeniorDetailView(TemplateView):
                     "summary": (analysis.summary if analysis else "특이사항 없음"),
                 }
             )
-
         ctx["calls"] = rows
+
+        # ✅ 친구 목록 추가 (여기서만 실행되어야 함!)
+        friends_qs = (
+            Friend.objects.filter(user_id=senior_id)
+            .select_related("friend_user")
+            .order_by("-created_at")[:50]
+        )
+        ctx["friends"] = [
+            {
+                "id": f.id,
+                "friendId": f.friend_user.id,
+                "friendName": f.friend_user.name,
+                "friendProfileImageUrl": f.friend_user.profile_image_url or "",
+                "createdAt": f.created_at,
+            }
+            for f in friends_qs
+        ]
+
         return ctx
 
 
