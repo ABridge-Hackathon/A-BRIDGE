@@ -246,19 +246,19 @@ class IdCardOcrView(APIView):
     authentication_classes = []
     permission_classes = []
 
-    # POST /api/auth/idcard/ocr (form-data: image)
     def post(self, request):
         _dbg(request, "IdCardOcrView")
 
-        img = request.FILES.get("image")
+        # 프론트가 보내는 키: id_image
+        img = request.FILES.get("id_image")
         if not img:
-            return fail("VALIDATION_ERROR", "image is required")
+            return fail("VALIDATION_ERROR", "id_image is required")
 
-        # 지금은 OCR 연동 전 단계: 더미 + onboardingToken 발급
-        name = request.data.get("name") or "김순자"
-        gender = request.data.get("gender") or "F"
-        birth_date = request.data.get("birthDate") or "1953-09-15"
-        address = request.data.get("address") or "수원시 팔달구"
+        # 더미(또는 OCR 결과) + onboardingToken
+        name = "김순자"
+        gender = "F"
+        birth_date = "1953-09-15"
+        address = "수원시 팔달구"
 
         payload = {
             "name": name,
@@ -267,7 +267,6 @@ class IdCardOcrView(APIView):
             "address": address,
             "profileImageUrl": "",
         }
-
         onboarding_token = issue_onboarding_token(payload)
 
         return ok(
