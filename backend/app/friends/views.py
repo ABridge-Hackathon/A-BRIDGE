@@ -1,4 +1,7 @@
 # app/friends/views.py
+from datetime import datetime
+from django.utils import timezone
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -32,10 +35,12 @@ class FriendListView(APIView):
 
     # GET /api/friends?offset=0&limit=6
     def get(self, request):
+        # 0) pagination params
         try:
             offset = int(request.query_params.get("offset", 0))
         except Exception:
             offset = 0
+
         try:
             limit = int(request.query_params.get("limit", DEFAULT_LIMIT))
         except Exception:
@@ -48,7 +53,7 @@ class FriendListView(APIView):
         if limit > MAX_LIMIT:
             limit = MAX_LIMIT
 
-        # 1) DB에서 최신순으로 100명까지만 뽑기 (정렬 재가공은 파이썬에서)
+        # 1) DB에서 최신순으로 100명까지만 (친구 관계 생성일 기준 최신)
         qs = (
             Friend.objects.filter(user=request.user)
             .select_related("friend_user", "friend_user__location")
@@ -56,30 +61,40 @@ class FriendListView(APIView):
         )
         friends = list(qs)
 
-        # 2) Redis로 온라인 여부 한 번에 조회
+        # 2) Redis 온라인 여부 한 번에 조회
         r = get_redis()
         friend_user_ids = [f.friend_user_id for f in friends]
         keys = [presence_key(uid) for uid in friend_user_ids]
 
         online_map = {}
         if keys:
-            vals = r.mget(keys)  # ["1", None, ...]
+            vals = r.mget(keys)  # [b"1" or "1" or None, ...]
             for uid, v in zip(friend_user_ids, vals):
                 online_map[uid] = v is not None
 
-        # 3) 응답 item 만들기
+        # 3) 응답 items 구성 (정렬을 위해 created_at datetime 유지)
+        now_year = timezone.now().year
+
         items = []
         for f in friends:
             u = f.friend_user
-            age = None
-            if u.birth_year:
-                # 해커톤용: 만 나이 말고 대충 "출생년도 기반"
-                age = 2026 - int(u.birth_year) + 1
 
+            # 해커톤용 나이 계산(정책 확정 전): birth_date 있으면 year 기준, 없으면 birth_year
+            age = None
+            if getattr(u, "birth_date", None):
+                age = now_year - u.birth_date.year
+            elif getattr(u, "birth_year", None):
+                age = now_year - int(u.birth_year)
+
+            # region: location.region 우선, 없으면 address fallback
             region = ""
             loc = getattr(u, "location", None)
             if loc and getattr(loc, "region", ""):
                 region = loc.region
+            else:
+                region = getattr(u, "address", "") or ""
+
+            created_dt = f.created_at  # datetime
 
             items.append(
                 {
@@ -87,34 +102,34 @@ class FriendListView(APIView):
                     "name": u.name,
                     "age": age,
                     "region": region,
-                    "profileImageUrl": u.profile_image_url,
                     "online": bool(online_map.get(u.id, False)),
                     "isWelfareWorker": bool(u.is_welfare_worker),
-                    "createdAt": f.created_at.isoformat(),
+                    "profileImageUrl": u.profile_image_url or "",
+                    "_createdAt": created_dt,  # 정렬용 내부 필드
                 }
             )
 
-        # 4) 정렬: 복지사 > 온라인 > 최신(createdAt desc)
+        # 4) 정렬: 복지사 먼저, 온라인 먼저, 최신 먼저
+        # - welfare: True 먼저  -> not isWelfareWorker (False가 먼저)
+        # - online: True 먼저   -> not online (False가 먼저)
+        # - 최신: createdAt desc -> -timestamp
         items.sort(
             key=lambda x: (
-                0 if x["isWelfareWorker"] else 1,
-                0 if x["online"] else 1,
-                x["createdAt"],
-            ),
-            reverse=False,
+                not x["isWelfareWorker"],
+                not x["online"],
+                -x["_createdAt"].timestamp(),
+            )
         )
-        # createdAt은 문자열이라 reverse 정렬이 애매하니,
-        # 위 방식 쓰면 createdAt이 오름차순될 수 있음 -> 아래처럼 최신이 먼저 되게 처리
-        # 가장 쉬운 방법: createdAt만 따로 reverse로 바꿔서 2차 처리
-        # (해커톤이면 아래 한 줄로 끝내자)
-        items.sort(key=lambda x: x["createdAt"], reverse=True)
-        items.sort(key=lambda x: (not x["online"]), reverse=False)
-        items.sort(key=lambda x: (not x["isWelfareWorker"]), reverse=False)
 
-        # 5) 페이지네이션
+        # 5) 페이지네이션 + createdAt 변환
         total = len(items)
         paged = items[offset : offset + limit]
         next_offset = offset + limit if (offset + limit) < total else None
+
+        # 응답에서는 createdAt만 내보내고 내부필드 제거
+        for it in paged:
+            it["createdAt"] = it["_createdAt"].isoformat()
+            del it["_createdAt"]
 
         return ok(
             {
@@ -125,28 +140,3 @@ class FriendListView(APIView):
                 "total": total,
             }
         )
-
-
-class FriendAddView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    # POST /api/friends/add
-    # body: { "targetUserId": 42 }
-    def post(self, request):
-        target_user_id = request.data.get("targetUserId")
-        if not target_user_id:
-            return fail("VALIDATION_ERROR", "targetUserId is required")
-
-        if str(target_user_id) == str(request.user.id):
-            return fail("INVALID_FRIEND", "cannot add yourself")
-
-        target = User.objects.filter(id=target_user_id, is_active=True).first()
-        if not target:
-            return fail("USER_NOT_FOUND", "target user not found", 404)
-
-        from app.friends.models import Friend
-
-        obj, created = Friend.objects.get_or_create(
-            user=request.user, friend_user=target
-        )
-        return ok({"added": bool(created)})

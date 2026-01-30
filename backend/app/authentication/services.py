@@ -41,7 +41,7 @@ def issue_otp(phone_number: str) -> None:
     if not to_number:
         raise ValueError("INVALID_PHONE_NUMBER")
 
-    code = f"{random.randint(0, 999999):06d}"  # ✅ 6자리
+    code = f"{random.randint(0, 999999):05d}"  # ✅ 5자리
     code_hash = _hash_code(code)
     expires_at = timezone.now() + timedelta(seconds=OTP_EXPIRE_SECONDS)
 

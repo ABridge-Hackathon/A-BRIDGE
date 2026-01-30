@@ -101,15 +101,6 @@ class RegisterView(APIView):
         return ok({"userId": user.id, "accessToken": token, "tokenType": "Bearer"})
 
 
-class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        # JWT는 서버 세션이 아니라서 "서버 로그아웃"이 실질적으로 없음.
-        # 해커톤: 클라에서 토큰 삭제하면 로그아웃 완료.
-        return ok({"loggedOut": True})
-
-
 class WithdrawView(APIView):
     permission_classes = [IsAuthenticated]
 
