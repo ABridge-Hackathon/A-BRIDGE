@@ -118,3 +118,31 @@ def verify_otp_and_issue_jwt(phone_number: str, code: str) -> str:
 def issue_jwt_for_user(user: User) -> str:
     token = AccessToken.for_user(user)
     return str(token)
+
+
+def verify_otp_only(phone_number: str, code: str) -> None:
+    phone = _normalize_phone(phone_number)
+    now = timezone.now()
+
+    v = (
+        SmsVerification.objects.filter(
+            phone_number=phone,
+            verified_at__isnull=True,
+            expires_at__gt=now,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if not v:
+        raise ValueError("OTP_NOT_FOUND_OR_EXPIRED")
+
+    if v.attempt_count >= OTP_MAX_ATTEMPTS:
+        raise ValueError("OTP_TOO_MANY_ATTEMPTS")
+
+    if v.code_hash != _hash_code(code):
+        v.attempt_count += 1
+        v.save(update_fields=["attempt_count"])
+        raise ValueError("OTP_INVALID_CODE")
+
+    v.verified_at = now
+    v.save(update_fields=["verified_at"])

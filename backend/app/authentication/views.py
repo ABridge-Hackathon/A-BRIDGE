@@ -1,19 +1,22 @@
 # app/auth/views.py
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-
-from typing import Optional, Dict, Any
-from app.users.models import User
-from .services import issue_otp, verify_otp_and_issue_jwt, issue_jwt_for_user
-
 from datetime import datetime
-from .services import _normalize_phone
-import json
-from app.common.redis_client import get_redis
-import secrets
 
-ONBOARDING_TTL_SEC = 60 * 30
+from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from app.users.models import User
+from .services import issue_otp, issue_jwt_for_user, _normalize_phone, verify_otp_only
+from .onboarding import (
+    issue_onboarding_token,
+    read_onboarding_token,
+    write_onboarding_token,
+    delete_onboarding_token,
+)
 
 
 def ok(data=None):
@@ -37,7 +40,7 @@ class OtpRequestView(APIView):
             return fail("VALIDATION_ERROR", "phoneNumber is required")
 
         issue_otp(phone)
-        from .services import OTP_EXPIRE_SECONDS
+        from .services import OTP_EXPIRE_SECONDS  # 5분(300초) 유지
 
         return ok({"expiresInSec": OTP_EXPIRE_SECONDS})
 
@@ -49,36 +52,97 @@ class OtpVerifyView(APIView):
     def post(self, request):
         phone = request.data.get("phoneNumber") or request.data.get("phone_number")
         code = request.data.get("code")
+        onboarding_token = request.data.get(
+            "onboardingToken"
+        )  # 회원가입 플로우에서만 존재
+
         if not phone or not code:
             return fail("VALIDATION_ERROR", "phoneNumber and code are required")
 
-        # ✅ 스펙: 가입 여부에 따라 isRegistered 내려줌 (미가입을 에러로 보지 않음)
         phone_norm = _normalize_phone(phone)
 
+        # 1) OTP 검증 (유저 존재 여부와 무관)
         try:
-            token = verify_otp_and_issue_jwt(phone_norm, code)
-            return ok(
-                {
-                    "accessToken": token,
-                    "tokenType": "Bearer",
-                    "isRegistered": True,
-                }
-            )
-        except LookupError:
-            # USER_NOT_REGISTERED를 에러로 던지지 않고 스펙대로 응답
-            return ok(
-                {
-                    "accessToken": None,
-                    "tokenType": "Bearer",
-                    "isRegistered": False,
-                }
-            )
+            verify_otp_only(phone_norm, code)
         except ValueError as e:
             code_map = str(e)
             return fail(code_map, code_map)
 
+        # 2) 기존 유저면 로그인(바로 JWT 발급)
+        user = User.objects.filter(phone_number=phone_norm, is_active=True).first()
+        if user:
+            if not user.is_phone_verified:
+                user.is_phone_verified = True
+                user.save(update_fields=["is_phone_verified"])
+
+            token = issue_jwt_for_user(user)
+            return ok(
+                {"accessToken": token, "tokenType": "Bearer", "isRegistered": True}
+            )
+
+        # 3) 유저 없으면: onboardingToken 있으면 회원가입 생성 후 로그인
+        if onboarding_token:
+            ob = read_onboarding_token(onboarding_token)
+            if not ob:
+                return fail(
+                    "INVALID_ONBOARDING_TOKEN",
+                    "invalid or expired onboardingToken",
+                    401,
+                )
+
+            name = ob.get("name") or "홍길동"
+            gender = ob.get("gender") or "M"
+            birth_date = ob.get("birthDate") or "2003-09-15"
+            address = ob.get("address") or "수원시 팔달구"
+            profile_url = ob.get("profileImageUrl") or ""
+
+            try:
+                parsed_birth_date = datetime.strptime(birth_date, "%Y-%m-%d").date()
+            except Exception:
+                return fail("VALIDATION_ERROR", "birthDate must be YYYY-MM-DD")
+
+            birth_year = parsed_birth_date.year
+
+            # 혹시 사이에 같은 번호로 가입된 경우 방어
+            existing = User.objects.filter(
+                phone_number=phone_norm, is_active=True
+            ).first()
+            if existing:
+                token = issue_jwt_for_user(existing)
+                delete_onboarding_token(onboarding_token)
+                return ok(
+                    {"accessToken": token, "tokenType": "Bearer", "isRegistered": True}
+                )
+
+            user = User.objects.create_user(
+                phone_number=phone_norm,
+                name=name,
+                gender=gender,
+                birth_year=birth_year,
+                birth_date=parsed_birth_date,
+                address=address,
+                profile_image_url=profile_url,
+                is_phone_verified=True,
+            )
+
+            delete_onboarding_token(onboarding_token)
+
+            token = issue_jwt_for_user(user)
+            return ok(
+                {"accessToken": token, "tokenType": "Bearer", "isRegistered": True}
+            )
+
+        # 4) 유저 없고 onboardingToken도 없음 -> 회원가입 필요
+        return ok({"accessToken": None, "tokenType": "Bearer", "isRegistered": False})
+
 
 class RegisterView(APIView):
+    """
+    현재 스펙에서는 OTP verify에서 onboardingToken 있으면 자동 가입까지 처리하므로
+    register는 '나중에 수정'이면 사실상 미사용이 될 수 있음.
+    (그래도 남겨두고 싶으면 유지)
+    """
+
     authentication_classes = []
     permission_classes = []
 
@@ -96,12 +160,11 @@ class RegisterView(APIView):
         if not all([phone, name, gender, birth_year, address]):
             return fail("VALIDATION_ERROR", "missing required fields")
 
-        phone = _normalize_phone(phone)
+        phone_norm = _normalize_phone(phone)
 
-        if User.objects.filter(phone_number=phone).exists():
+        if User.objects.filter(phone_number=phone_norm).exists():
             return fail("PHONE_ALREADY_USED", "phone_number already exists", 409)
 
-        # birthDate 파싱(옵션)
         parsed_birth_date = None
         if birth_date:
             try:
@@ -110,14 +173,14 @@ class RegisterView(APIView):
                 return fail("VALIDATION_ERROR", "birthDate must be YYYY-MM-DD")
 
         user = User.objects.create_user(
-            phone_number=phone,
+            phone_number=phone_norm,
             name=name,
             gender=gender,
             birth_year=int(birth_year),
             birth_date=parsed_birth_date,
             address=address,
             profile_image_url=profile_image_url,
-            is_phone_verified=True,  # 해커톤: 가입=인증완료로 처리
+            is_phone_verified=True,
         )
 
         token = issue_jwt_for_user(user)
@@ -131,7 +194,7 @@ class WithdrawView(APIView):
         user: User = request.user
         user.is_active = False
         user.save(update_fields=["is_active"])
-        return ok(None)  # ✅ data: null
+        return ok(None)
 
 
 class LoginView(APIView):
@@ -148,55 +211,35 @@ class LoginView(APIView):
             return fail("USER_NOT_FOUND", "user not found", 404)
 
         token = issue_jwt_for_user(user)
-        return ok({"accessToken": token, "tokenType": "Bearer"})
-
-
-def _ob_key(token: str) -> str:
-    return f"onboarding:{token}"
-
-
-def issue_onboarding_token(payload: dict) -> str:
-    token = "ob_" + secrets.token_urlsafe(24)
-    r = get_redis()
-    r.set(
-        _ob_key(token), json.dumps(payload, ensure_ascii=False), ex=ONBOARDING_TTL_SEC
-    )
-    return token
-
-
-def read_onboarding_token(token: str) -> Optional[Dict[str, Any]]:
-    if not token or not token.startswith("ob_"):
-        return None
-    r = get_redis()
-    raw = r.get(_ob_key(token))
-    if not raw:
-        return None
-    try:
-        return json.loads(raw)
-    except Exception:
-        return None
+        return ok({"accessToken": token})
 
 
 class IdCardOcrView(APIView):
-    """
-    더미:
-    - 어떤 요청이 와도 200 OK
-    - form-data로 사진만 와도 OK
-    - onboardingToken은 그냥 임의 문자열로 내려줌(저장/검증 안 함)
-    """
-
     authentication_classes = []
     permission_classes = []
 
+    # POST /api/auth/idcard/ocr (form-data: image)
     def post(self, request):
-        # 프론트가 값 보내면 그걸로, 아니면 기본 더미
-        name = request.data.get("name") or "홍길동"
-        gender = request.data.get("gender") or "M"
-        birth_date = request.data.get("birthDate") or "2003-09-15"
+        img = request.FILES.get("image")
+        if not img:
+            return fail("VALIDATION_ERROR", "image is required")
+
+        # 지금은 OCR 연동 전 단계: 더미 + onboardingToken 발급
+        # (요청에 name/gender/birthDate/address가 와도 무시해도 되지만, 있으면 반영해도 괜찮음)
+        name = request.data.get("name") or "김순자"
+        gender = request.data.get("gender") or "F"
+        birth_date = request.data.get("birthDate") or "1953-09-15"
         address = request.data.get("address") or "수원시 팔달구"
 
-        # ✅ 저장/검증 없이 그냥 랜덤 토큰 내려줌
-        onboarding_token = "ob_dummy_" + secrets.token_urlsafe(12)
+        payload = {
+            "name": name,
+            "gender": gender,
+            "birthDate": birth_date,
+            "address": address,
+            "profileImageUrl": "",
+        }
+
+        onboarding_token = issue_onboarding_token(payload)
 
         return ok(
             {
@@ -210,17 +253,48 @@ class IdCardOcrView(APIView):
 
 
 class ProfileImageUploadView(APIView):
-    """
-    더미:
-    - Authorization 없어도 OK
-    - form-data에 image 없어도 OK
-    - 무조건 200 OK + 더미 profileImageUrl 반환
-    """
-
     authentication_classes = []
     permission_classes = []
 
+    # POST /api/auth/profile-image (form-data: image)
     def post(self, request):
-        # 실제 업로드 안 함. 그냥 응답만.
-        profile_url = "https://example.com/profile.jpg"
+        # 1) onboardingToken: Authorization Bearer or form-data field
+        auth = request.headers.get("Authorization", "")
+        token = None
+        if auth.startswith("Bearer "):
+            token = auth.split(" ", 1)[1].strip()
+        if not token:
+            token = request.data.get("onboardingToken")
+
+        payload = read_onboarding_token(token)
+        if not payload:
+            return fail(
+                "INVALID_ONBOARDING_TOKEN", "invalid or expired onboardingToken", 401
+            )
+
+        img = request.FILES.get("image")
+        if not img:
+            return fail("VALIDATION_ERROR", "image is required")
+
+        # 2) 로컬 저장: onboarding_profiles/<token>.<ext>
+        filename = img.name or "profile.jpg"
+        ext = ".jpg"
+        if "." in filename:
+            maybe = "." + filename.split(".")[-1].lower()
+            if maybe in [".jpg", ".jpeg", ".png", ".webp"]:
+                ext = maybe
+
+        path = f"onboarding_profiles/{token}{ext}"
+        saved_path = default_storage.save(path, ContentFile(img.read()))
+
+        # MEDIA_URL 없으면 기본 "/media/" 로 가정
+        media_url = getattr(settings, "MEDIA_URL", "/media/")
+        if not media_url.endswith("/"):
+            media_url += "/"
+        profile_url = media_url + saved_path
+
+        # 3) onboarding payload 업데이트
+        payload["profileImageUrl"] = profile_url
+        write_onboarding_token(token, payload)
+
         return ok({"profileImageUrl": profile_url})
