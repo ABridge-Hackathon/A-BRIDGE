@@ -10,6 +10,26 @@ from rest_framework.response import Response
 from app.users.models import User
 from app.care.models import CareRelation
 from app.calls.models import CallLog
+from django.utils.timesince import timesince
+from app.transcripts.models import Transcript
+
+
+def _recent_text(dt):
+    if not dt:
+        return "-"
+    # "0분 전"이면 "방금 전"으로
+    diff = timesince(dt, timezone.now()).split(",")[0]
+    if diff.startswith("0"):
+        return "방금 전"
+    return f"{diff} 전"
+
+
+def _dashboard_status_text(status: str) -> str:
+    return {
+        "DANGER": "새로운대화 분석 완료",
+        "WARNING": "특이사항 분석 완료",
+        "SAFE": "특이사항 없음",
+    }.get(status, "특이사항 없음")
 
 
 def _require_welfare_worker(user: User) -> bool:
@@ -60,12 +80,21 @@ class DashboardView(TemplateView):
             recent_text = "-"
             is_new = False
 
-            if last_call:
-                analysis = getattr(last_call, "analysis", None)
-                status = analysis.status if analysis else "SAFE"
-                status_text = analysis.summary if analysis else "분석 없음"
-                recent_text = last_call.ended_at.strftime("%Y.%m.%d %H:%M")
-                is_new = True  # 필요하면 조건 추가 가능
+        if last_call:
+            analysis = getattr(last_call, "analysis", None)
+            status = analysis.status if analysis else "SAFE"
+
+            # ✅ (3)처럼 문구 고정
+            status_text = _dashboard_status_text(status)
+
+            # ✅ (3)처럼 "방금 전/1시간 전"
+            recent_text = _recent_text(last_call.ended_at)
+
+            # ✅ New 뱃지: 예) 최근 24시간 이내면 New
+            if last_call.ended_at:
+                is_new = (
+                    timezone.now() - last_call.ended_at
+                ).total_seconds() <= 60 * 60 * 24
 
             items.append(
                 {
@@ -115,7 +144,7 @@ class SeniorDetailView(TemplateView):
         # 통화 기록: 최신순
         calls = (
             CallLog.objects.filter(senior_id=senior_id)
-            .select_related("peer")
+            .select_related("peer", "analysis")  # analysis 추가
             .order_by("-ended_at", "-started_at")[:50]
         )
 
@@ -154,7 +183,7 @@ class CallDetailView(TemplateView):
         call_id = kwargs["call_id"]
 
         call = (
-            CallLog.objects.select_related("senior", "peer")
+            CallLog.objects.select_related("senior", "peer", "analysis")
             .filter(call_id=call_id)
             .first()
         )
@@ -173,13 +202,26 @@ class CallDetailView(TemplateView):
         analysis = getattr(call, "analysis", None)
         transcript = Transcript.objects.filter(session_id=call.session_id).first()
         lines = []
-        if transcript:
-            for i, line in enumerate(transcript.text.split("\n")):
+        transcript = Transcript.objects.filter(session_id=call.session_id).first()
+
+        if transcript and transcript.text:
+            for i, raw in enumerate(transcript.text.split("\n")):
+                raw = raw.strip()
+                if not raw:
+                    continue
+
+                # "김철수: 어보세요" 형태 아니면 스킵/보정
+                if ":" in raw:
+                    speaker, text = raw.split(":", 1)
+                else:
+                    speaker, text = "알 수 없음", raw
+
+                ts = call.started_at + timezone.timedelta(seconds=i * 10)
                 lines.append(
                     {
-                        "speaker": line.split(":")[0],
-                        "text": ":".join(line.split(":")[1:]),
-                        "ts": call.started_at + timezone.timedelta(seconds=i * 10),
+                        "speaker": speaker.strip(),
+                        "text": text.strip(),
+                        "ts": ts.strftime("%H:%M"),  #  화면에 18:30 처럼
                     }
                 )
         ctx["lines"] = lines
