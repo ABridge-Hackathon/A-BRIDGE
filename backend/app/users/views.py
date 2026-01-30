@@ -10,6 +10,9 @@ def ok(data=None):
     return Response({"success": True, "data": data, "error": None})
 
 
+DEMO_FORCE_USER_PHONE = "01040823455"
+
+
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
