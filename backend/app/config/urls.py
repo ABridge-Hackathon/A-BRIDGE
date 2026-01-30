@@ -12,4 +12,5 @@ urlpatterns = [
     path(
         "api/", include("app.transcripts.urls")
     ),  # /match/sessions/... 같은 경우 여기서 잡아도 됨
+    path("api/me/", include("app.me.urls")),
 ]

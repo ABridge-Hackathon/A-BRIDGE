@@ -1,3 +1,4 @@
+# app/common/redis_client.py
 import redis
 from django.conf import settings
 

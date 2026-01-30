@@ -1,6 +1,7 @@
 # app/users/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
@@ -44,11 +45,14 @@ class User(AbstractUser):
     name = models.CharField(max_length=50)
     gender = models.CharField(max_length=1)  # "M" / "F"
     birth_year = models.IntegerField()
+    birth_date = models.DateField(
+        null=True, blank=True
+    )  # 추가 (기존 row 때문에 null 허용)
     address = models.CharField(max_length=255)
     profile_image_url = models.TextField(blank=True, default="")
     is_welfare_worker = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
 
     USERNAME_FIELD = "phone_number"
     REQUIRED_FIELDS = []  # createsuperuser에서 추가로 요구할 필드(해커톤이면 비워도 OK)

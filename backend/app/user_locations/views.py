@@ -1,5 +1,5 @@
 # app/user_locations/views.py
-
+from app.user_locations.geocode import reverse_geocode_region
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -26,27 +26,28 @@ class MyLocationView(APIView):
                 status=400,
             )
 
+        lat = float(lat)
+        lng = float(lng)
+
+        region = reverse_geocode_region(lat, lng)  # 중요
+
         loc, _ = UserLocation.objects.update_or_create(
             user=request.user,
-            defaults={"latitude": float(lat), "longitude": float(lng)},
+            defaults={
+                "latitude": lat,
+                "longitude": lng,
+                "region": region,
+            },
         )
 
         return Response(
             {
                 "success": True,
-                "data": {"latitude": loc.latitude, "longitude": loc.longitude},
-                "error": None,
-            }
-        )
-
-    def get(self, request):
-        loc = getattr(request.user, "location", None)
-        if not loc:
-            return Response({"success": True, "data": None, "error": None})
-        return Response(
-            {
-                "success": True,
-                "data": {"latitude": loc.latitude, "longitude": loc.longitude},
+                "data": {
+                    "latitude": loc.latitude,
+                    "longitude": loc.longitude,
+                    "region": loc.region,
+                },
                 "error": None,
             }
         )
