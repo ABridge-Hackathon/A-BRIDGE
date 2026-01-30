@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from .models import MatchSession
-from app.matches.services import request_match, save_session_state, delete_session_state
+from app.matches.services import request_match
 from app.matches.redis_store import save_session_state, delete_session_state
 
 
