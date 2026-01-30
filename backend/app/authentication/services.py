@@ -57,7 +57,8 @@ def issue_otp(phone_number: str) -> None:
     if not from_number:
         raise RuntimeError("SOLAPI_FROM_NUMBER not set")
 
-    text = f"[함보까] 인증번호는 {code} 입니다. {(OTP_EXPIRE_SECONDS/5)}분 이내 입력하세요."
+    minutes = OTP_EXPIRE_SECONDS // 60  # 300이면 5
+    text = f"[함보까] 인증번호는 {code} 입니다. {minutes}분 이내 입력하세요."
 
     client = _solapi_client()
     message = RequestMessage(
