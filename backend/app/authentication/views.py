@@ -344,9 +344,9 @@ class DevJwtIssueView(APIView):
         user, _ = User.objects.get_or_create(
             phone_number="00000000000",
             defaults={
-                "name": "DEV_USER",
+                "name": "송민혁",
                 "gender": "M",
-                "birth_year": 1970,
+                "birth_year": 1954,
                 "address": "DEV",
                 "is_phone_verified": True,
             },
