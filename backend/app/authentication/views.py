@@ -331,3 +331,33 @@ class ProfileImageUploadView(APIView):
         write_onboarding_token(token, payload)
 
         return ok({"profileImageUrl": profile_url})
+
+
+class DevJwtIssueView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        _dbg(request, "DevJwtIssueView")
+
+        # ⚠️ 해커톤/개발용 고정 유저
+        user, _ = User.objects.get_or_create(
+            phone_number="00000000000",
+            defaults={
+                "name": "DEV_USER",
+                "gender": "M",
+                "birth_year": 1970,
+                "address": "DEV",
+                "is_phone_verified": True,
+            },
+        )
+
+        token = issue_jwt_for_user(user)
+
+        return ok(
+            {
+                "accessToken": token,
+                "tokenType": "Bearer",
+                "isRegistered": True,
+            }
+        )

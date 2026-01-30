@@ -7,6 +7,7 @@ from .views import (
     LoginView,
     IdCardOcrView,
     ProfileImageUploadView,
+    DevJwtIssueView,
 )
 
 urlpatterns = [
@@ -26,4 +27,8 @@ urlpatterns = [
     path("login", LoginView.as_view()),
     # path("logout", LogoutView.as_view()),
     path("withdraw", WithdrawView.as_view()),
+    # 개발용 JWT
+    path("jwt/dev/", DevJwtIssueView.as_view()),
+    # (슬래시 없는 버전 유지 시)
+    path("jwt/dev", DevJwtIssueView.as_view()),
 ]
