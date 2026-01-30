@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import MatchSession
 from app.matches.services import request_match, save_session_state, delete_session_state
+from app.matches.redis_store import save_session_state, delete_session_state
 
 
 def ok(data=None):
@@ -73,4 +74,4 @@ class MatchEndView(APIView):
         # 해커톤이면 종료 시 바로 삭제하고 싶으면 아래로 바꾸기:
         # delete_session_state(str(session.session_id))
 
-        return ok({"sessionId": str(session.session_id), "status": session.status})
+        return ok({"sessionId": str(session.session_id), "status": session.status})a
