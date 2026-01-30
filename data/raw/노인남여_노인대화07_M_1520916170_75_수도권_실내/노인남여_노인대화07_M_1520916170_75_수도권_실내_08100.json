@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "저혈당 때문에 어떻게 해 가지고 그 담도염까지 왔대",
+    "scriptId" : "노인대화-08100",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_08100.wav",
+    "recrdTime" : "6.570",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2021-01-09 10:06:36",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

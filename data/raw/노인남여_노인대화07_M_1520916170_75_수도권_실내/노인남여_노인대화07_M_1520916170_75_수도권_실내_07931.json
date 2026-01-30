@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "아까워 하지 마라 하면서 얘기하는데 그런 것조차도",
+    "scriptId" : "노인대화-07931",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_07931.wav",
+    "recrdTime" : "6.140",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2020-12-13 00:10:32",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

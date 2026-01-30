@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "그러니까 지금 막 전체적인 모든 게 밸런스를 맞춰야지",
+    "scriptId" : "노인대화-08145",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_08145.wav",
+    "recrdTime" : "5.800",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2021-01-12 00:31:29",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

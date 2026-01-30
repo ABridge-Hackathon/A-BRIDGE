@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "보면 다 새다리야 그것도 보통 문제가 아니지",
+    "scriptId" : "노인대화-07825",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_07825.wav",
+    "recrdTime" : "4.610",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2020-12-05 01:54:16",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

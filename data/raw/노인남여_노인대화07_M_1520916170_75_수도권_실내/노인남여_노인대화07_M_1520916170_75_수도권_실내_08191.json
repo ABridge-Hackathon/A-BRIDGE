@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "움직이는 거를 싫어했던 것 같애 운동하나 빼고 다 괜찮았었지",
+    "scriptId" : "노인대화-08191",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_08191.wav",
+    "recrdTime" : "7.170",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2021-01-18 11:27:12",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}
