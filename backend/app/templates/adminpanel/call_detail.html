@@ -1,0 +1,50 @@
+<!-- templates/adminpanel/call_detail.html -->
+{% extends "adminpanel/base.html" %}
+{% block layout %}
+<div class="col-3 sidebar p-4">
+  {% if forbidden %}
+  <div class="alert alert-danger">접근 권한이 없습니다.</div>
+  {% elif not_found %}
+  <div class="alert alert-warning">통화가 없습니다.</div>
+  {% else %}
+  <div class="text-center mb-3">
+    <img src="{{ call.senior.profile_image_url }}" class="rounded-circle"
+      style="width:120px;height:120px;object-fit:cover;background:#fff;">
+  </div>
+  <h4 class="fw-bold mb-1">{{ call.senior.name }}</h4>
+  <div class="text-muted">ID: u_{{ call.senior.id }}</div>
+  <div class="mt-3">
+    <a class="btn btn-outline-secondary w-100" href="/adminpanel/seniors/{{ call.senior.id }}/">← 목록으로</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="col-9 p-4">
+  {% if not forbidden and not not_found %}
+  <div class="card p-3 mb-3">
+    <div class="fw-bold">🔔 통화 분석 결과 {% if call.ended_at %}({{ call.ended_at|date:"Y.m.d H:i" }}){% endif %}</div>
+    <div class="mt-2 d-flex gap-2 flex-wrap">
+      <span class="badge text-bg-light border">
+        상태:
+        {% if analysis and analysis.status == "DANGER" %}🔴 위험{% elif analysis and analysis.status == "WARNING" %}🟠
+        주의{% else %}🟢 안전{% endif %}
+      </span>
+      <span class="badge text-bg-light border">유형: {{ analysis.category|default:"-" }}</span>
+      <span class="badge text-bg-light border">관련 키워드: {{ analysis.keywords|default:"-" }}</span>
+    </div>
+  </div>
+
+  <div class="card p-3" style="max-height:70vh; overflow:auto;">
+    <div class="fw-bold mb-2">📜 전체 통화 내용</div>
+    <hr />
+    {% for ln in lines %}
+    <div class="mb-2">
+      <span class="text-muted small me-2">[{{ ln.ts }}]</span>
+      <span class="fw-semibold">{{ ln.speaker }}:</span>
+      <span>{{ ln.text }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

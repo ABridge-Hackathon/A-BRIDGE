@@ -1,0 +1,49 @@
+<!-- templates/adminpanel/dashboard.html -->
+{% extends "adminpanel/base.html" %}
+{% block layout %}
+<div class="col-3 sidebar p-4">
+  <div class="text-center mb-3">
+    <img src="{{ me.profile_image_url|default:'' }}" class="rounded-circle"
+      style="width:96px;height:96px;object-fit:cover;background:#fff;">
+  </div>
+  <h5 class="fw-bold mb-1">{{ me.name }} 복지사</h5>
+  <div class="text-muted small">소속: (추후)</div>
+</div>
+
+<div class="col-9 p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">관리 대상 어르신 <span class="text-muted fs-6">Total: {{ total }}명</span></h4>
+    <form class="d-flex" method="get">
+      <input class="form-control" name="q" value="{{ q }}" placeholder="이름 검색" />
+    </form>
+  </div>
+
+  <div class="row g-3">
+    {% for it in items %}
+    <div class="col-6">
+      <a class="text-decoration-none text-dark" href="/adminpanel/seniors/{{ it.userId }}/">
+        <div class="card card-hover p-3">
+          <div class="d-flex gap-3 align-items-center">
+            <img src="{{ it.profileImageUrl }}" class="rounded-circle"
+              style="width:56px;height:56px;object-fit:cover;background:#eee;">
+            <div class="flex-grow-1">
+              <div class="text-muted small">u_{{ it.userId }}</div>
+              <div class="fw-bold fs-5">{{ it.name }}</div>
+              <div class="text-muted small">
+                {% if it.isNew %}
+                <span class="dot dot-danger me-1"></span><span class="fw-semibold">New</span>
+                {% else %}
+                <span class="dot dot-safe me-1"></span>
+                {% endif %}
+                {{ it.statusText }} · {{ it.recentText }}
+              </div>
+            </div>
+            <div class="text-muted">⋯</div>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

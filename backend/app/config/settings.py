@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     "app.matches",
     "app.transcripts",
     "corsheaders",
+    "app.care",
+    "app.adminpanel",
+    "app.calls",
 ]
 
 

@@ -1,0 +1,60 @@
+<!-- templates/adminpanel/senior_detail.html -->
+{% extends "adminpanel/base.html" %}
+{% block layout %}
+<div class="col-3 sidebar p-4">
+  {% if forbidden %}
+  <div class="alert alert-danger">접근 권한이 없습니다.</div>
+  {% else %}
+  <div class="text-center mb-3">
+    <img src="{{ senior.profile_image_url }}" class="rounded-circle"
+      style="width:120px;height:120px;object-fit:cover;background:#fff;">
+  </div>
+  <h4 class="fw-bold mb-1">{{ senior.name }} ({{ seniorAge }}세)</h4>
+  <div class="text-muted mb-3">{{ senior.gender }} / (추후)</div>
+  <div class="text-muted small mb-2">ID: u_{{ senior.id }}</div>
+
+  <button class="btn btn-success w-100 mb-2">📞 전화 걸기</button>
+  <button class="btn btn-outline-danger w-100">🚫 계정 차단</button>
+  {% endif %}
+</div>
+
+<div class="col-9 p-4">
+  {% if not forbidden %}
+  <h4 class="fw-bold mb-3">{{ senior.name }} 님의 화상 통화 기록</h4>
+
+  <div class="card p-3">
+    <div class="row fw-semibold text-muted small mb-2">
+      <div class="col-6">상대방 정보 (Peer Info)</div>
+      <div class="col-6">통화 결과 (AI Analysis)</div>
+    </div>
+
+    {% for c in calls %}
+    <div class="border rounded p-3 mb-2">
+      <div class="row align-items-center">
+        <div class="col-6">
+          <div class="fw-bold">{{ c.peerName }} (u_{{ c.peerId }})</div>
+          <div class="text-muted small">{{ c.peerAge }}세 / {{ c.peerGender }}</div>
+          <div class="text-muted small">
+            {% if c.endedAt %}{{ c.endedAt|date:"Y.m.d H:i" }}{% endif %}
+          </div>
+        </div>
+        <div class="col-6 d-flex justify-content-between align-items-center">
+          <div>
+            {% if c.status == "DANGER" %}
+            <span class="dot dot-danger me-2"></span><span class="fw-bold text-danger">위험</span>
+            {% elif c.status == "WARNING" %}
+            <span class="dot dot-warning me-2"></span><span class="fw-bold text-warning">주의</span>
+            {% else %}
+            <span class="dot dot-safe me-2"></span><span class="fw-bold text-success">안전</span>
+            {% endif %}
+            <div class="text-muted small">{{ c.summary }}</div>
+          </div>
+          <a class="btn btn-link" href="/adminpanel/calls/{{ c.callId }}/">상세 보기 →</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

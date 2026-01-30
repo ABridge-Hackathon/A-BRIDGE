@@ -17,6 +17,7 @@ urlpatterns = [
     ),  # /match/sessions/... 같은 경우 여기서 잡아도 됨
     path("api/me/", include("app.me.urls")),
     path("api/calls/", include("app.calls.urls")),
+    path("adminpanel/", include("app.adminpanel.urls")),
 ]
 
 if settings.DEBUG:
