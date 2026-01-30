@@ -47,5 +47,6 @@ class UserMeSerializer(serializers.ModelSerializer):
         loc = getattr(obj, "location", None)
         if loc and getattr(loc, "region", ""):
             return loc.region
-        # fallback: 주소에서 대충 보여주기
-        return obj.address
+
+        #  실패/없음이면 규칙대로
+        return "강원도 원주시"

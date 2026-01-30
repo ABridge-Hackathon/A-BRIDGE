@@ -1,93 +1,79 @@
-# app/auth/services.py
-import hashlib
-import os
-import random
-from datetime import timedelta
+# app/matches/services.py
+import math
+from django.db import transaction
+from app.matches.models import MatchSession
+from app.user_locations.models import UserLocation
 
-from django.utils import timezone
-from rest_framework_simplejwt.tokens import AccessToken
-
-from app.sms_verifications.models import SmsVerification
-from app.users.models import User
-
-# solapi 추가
-from solapi import SolapiMessageService
-from solapi.model import RequestMessage
-
-OTP_EXPIRE_SECONDS = 300
-OTP_MAX_ATTEMPTS = 3
+# 위치 없으면 뒤로 보내는 값
+FAR_DISTANCE = 9999.0
 
 
-def _hash_code(code: str) -> str:
-    salt = os.environ.get("OTP_SALT", "dev-salt")
-    return hashlib.sha256(f"{salt}:{code}".encode("utf-8")).hexdigest()
+def haversine_km(lat1, lon1, lat2, lon2) -> float:
+    # 지구 반지름(km)
+    R = 6371.0
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+
+    a = math.sin(dlat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
 
 
-def _solapi_client() -> SolapiMessageService:
-    api_key = os.environ.get("SOLAPI_API_KEY", "")
-    api_secret = os.environ.get("SOLAPI_API_SECRET", "")
-    if not api_key or not api_secret:
-        raise RuntimeError("SOLAPI_API_KEY / SOLAPI_API_SECRET not set")
-    return SolapiMessageService(api_key=api_key, api_secret=api_secret)
+def create_waiting_session(user) -> MatchSession:
+    return MatchSession.objects.create(user_a=user, status="WAITING")
 
 
-def issue_otp(phone_number: str) -> None:
-    code = f"{random.randint(0, 999999):06d}"
-    code_hash = _hash_code(code)
-    expires_at = timezone.now() + timedelta(seconds=OTP_EXPIRE_SECONDS)
-
-    # 1) OTP 저장
-    SmsVerification.objects.create(
-        phone_number=phone_number,
-        code_hash=code_hash,
-        expires_at=expires_at,
+@transaction.atomic
+def request_match(user) -> MatchSession:
+    """
+    간단 매칭 정책(문서/요구 반영):
+    - 1순위: 현재 위치 기반(있으면 거리 최소)
+    - 2순위 주소 기반: ❌ 안 함 (요구사항)
+    - 후보: WAITING 세션 중에서 user_a != 나
+    - 매칭 성공: candidate.user_b = 나, status = MATCHED
+    - 실패: 내가 WAITING 세션 생성
+    """
+    existing = (
+        MatchSession.objects.filter(user_a=user, status="WAITING")
+        .order_by("-started_at")
+        .first()
     )
-
-    # 2) SMS 발송
-    from_number = os.environ.get("SOLAPI_FROM_NUMBER", "")
-    if not from_number:
-        raise RuntimeError("SOLAPI_FROM_NUMBER not set")
-
-    text = (
-        f"[ASCII] 인증번호는 {code} 입니다. {OTP_EXPIRE_SECONDS}초 이내 입력 해주세요"
-    )
-
-    client = _solapi_client()
-    message = RequestMessage(
-        from_=from_number,  # 01012345678 (하이픈X)
-        to=phone_number,  # 01012345678 (하이픈X)
-        text=text,
-    )
-
-    try:
-        client.send(message)
-    except Exception as e:
-        # 해커톤이면 여기서 실패 로그만 찍고,
-        # 실제로는 "재시도"나 "OTP row 삭제" 등을 선택하면 됨
-        raise RuntimeError(f"SOLAPI_SEND_FAILED: {str(e)}")
-
-
-def request_match(user):
+    if existing:
+        return existing
     my_loc = UserLocation.objects.filter(user=user).first()
 
+    # 후보 20개 정도만 잡아서 거리 계산 (해커톤)
     candidates = (
-        MatchSession.objects.filter(status="WAITING")
+        MatchSession.objects.select_for_update(skip_locked=True)
+        .filter(status="WAITING")
         .exclude(user_a=user)
-        .select_for_update(skip_locked=True)
         .order_by("started_at")[:20]
     )
 
-    best = None
+    best_session = None
+    best_dist = None
+
     for c in candidates:
         peer_loc = UserLocation.objects.filter(user=c.user_a).first()
+
         if my_loc and peer_loc:
             d = haversine_km(
                 my_loc.latitude, my_loc.longitude, peer_loc.latitude, peer_loc.longitude
             )
         else:
-            d = 9999  # 위치 없으면 맨 뒤
-        if best is None or d < best[0]:
-            best = (d, c)
+            d = FAR_DISTANCE
 
-    if not best:
+        if best_dist is None or d < best_dist:
+            best_dist = d
+            best_session = c
+
+    if not best_session:
         return create_waiting_session(user)
+
+    # 매칭 확정
+    best_session.user_b = user
+    best_session.status = "MATCHED"
+    best_session.save(update_fields=["user_b", "status"])
+    return best_session

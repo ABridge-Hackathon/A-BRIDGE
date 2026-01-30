@@ -14,7 +14,7 @@ from solapi.model import RequestMessage
 from app.sms_verifications.models import SmsVerification
 from app.users.models import User
 
-OTP_EXPIRE_SECONDS = 60
+OTP_EXPIRE_SECONDS = 300  #
 OTP_MAX_ATTEMPTS = 3
 
 
@@ -57,7 +57,7 @@ def issue_otp(phone_number: str) -> None:
     if not from_number:
         raise RuntimeError("SOLAPI_FROM_NUMBER not set")
 
-    text = f"[함보까] 인증번호는 {code} 입니다. {OTP_EXPIRE_SECONDS}초 이내 입력하세요."
+    text = f"[함보까] 인증번호는 {code} 입니다. {(OTP_EXPIRE_SECONDS/5)}분 이내 입력하세요."
 
     client = _solapi_client()
     message = RequestMessage(

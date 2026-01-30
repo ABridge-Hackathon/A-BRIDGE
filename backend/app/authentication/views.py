@@ -22,16 +22,18 @@ def fail(code: str, message: str, http_status: int = 400):
 
 
 class OtpRequestView(APIView):
-    authentication_classes = []  # 인증 없이
+    authentication_classes = []
     permission_classes = []
 
     def post(self, request):
-        phone = request.data.get("phone_number")
+        phone = request.data.get("phoneNumber") or request.data.get("phone_number")
         if not phone:
-            return fail("VALIDATION_ERROR", "phone_number is required")
+            return fail("VALIDATION_ERROR", "phoneNumber is required")
 
         issue_otp(phone)
-        return ok({"sent": True})
+        from .services import OTP_EXPIRE_SECONDS
+
+        return ok({"expiresInSec": OTP_EXPIRE_SECONDS})
 
 
 class OtpVerifyView(APIView):
@@ -39,17 +41,32 @@ class OtpVerifyView(APIView):
     permission_classes = []
 
     def post(self, request):
-        phone = request.data.get("phone_number")
+        phone = request.data.get("phoneNumber") or request.data.get("phone_number")
         code = request.data.get("code")
         if not phone or not code:
-            return fail("VALIDATION_ERROR", "phone_number and code are required")
+            return fail("VALIDATION_ERROR", "phoneNumber and code are required")
+
+        # ✅ 스펙: 가입 여부에 따라 isRegistered 내려줌 (미가입을 에러로 보지 않음)
+        phone_norm = _normalize_phone(phone)
 
         try:
-            token = verify_otp_and_issue_jwt(phone, code)
-            return ok({"accessToken": token, "tokenType": "Bearer"})
+            token = verify_otp_and_issue_jwt(phone_norm, code)
+            return ok(
+                {
+                    "accessToken": token,
+                    "tokenType": "Bearer",
+                    "isRegistered": True,
+                }
+            )
         except LookupError:
-            # 유저가 아직 없으면 회원가입 하라고 내려줌
-            return fail("USER_NOT_REGISTERED", "register is required", 404)
+            # USER_NOT_REGISTERED를 에러로 던지지 않고 스펙대로 응답
+            return ok(
+                {
+                    "accessToken": None,
+                    "tokenType": "Bearer",
+                    "isRegistered": False,
+                }
+            )
         except ValueError as e:
             code_map = str(e)
             return fail(code_map, code_map)
@@ -108,4 +125,21 @@ class WithdrawView(APIView):
         user: User = request.user
         user.is_active = False
         user.save(update_fields=["is_active"])
-        return ok({"withdrawn": True})
+        return ok(None)  # ✅ data: null
+
+
+class LoginView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        user_id = request.data.get("userId") or request.data.get("user_id")
+        if not user_id:
+            return fail("VALIDATION_ERROR", "userId is required")
+
+        user = User.objects.filter(id=user_id, is_active=True).first()
+        if not user:
+            return fail("USER_NOT_FOUND", "user not found", 404)
+
+        token = issue_jwt_for_user(user)
+        return ok({"accessToken": token, "tokenType": "Bearer"})

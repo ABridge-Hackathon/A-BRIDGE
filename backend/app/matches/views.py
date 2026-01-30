@@ -6,11 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import MatchSession
 from app.matches.services import request_match
-from app.matches.redis_store import save_session_state, delete_session_state
-
-
-def ok(data=None):
-    return Response({"success": True, "data": data, "error": None})
+from app.matches.redis_store import save_session_state
 
 
 def fail(code: str, message: str, http_status: int = 400):
@@ -24,32 +20,23 @@ class MatchRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user = request.user  # JWT로 식별
+        user = request.user
 
-        result = request_match(user)
-        session = result["session"]
+        session = request_match(user)
 
-        # Redis에 세션 상태 저장 (WAITING/MATCHED/CANCELED 등)
         save_session_state(session, status=session.status)
 
-        return ok(
-            {
-                "sessionId": str(session.session_id),
-                "status": session.status,
-                "matched": result.get("matched", False),
-                "peerUserId": result.get("peer_user_id"),
-                "distanceKm": result.get("distance_km"),
-            }
-        )
+        # 문서대로: sessionId만 반환 (envelope 없이)
+        return Response({"sessionId": str(session.session_id)})
 
 
 class MatchEndView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        session_id = request.data.get("session_id") or request.data.get("sessionId")
+        session_id = request.data.get("sessionId") or request.data.get("session_id")
         if not session_id:
-            return fail("VALIDATION_ERROR", "session_id is required")
+            return fail("VALIDATION_ERROR", "sessionId is required")
 
         session = MatchSession.objects.filter(session_id=session_id).first()
         if not session:
@@ -62,16 +49,11 @@ class MatchEndView(APIView):
         ):
             return fail("FORBIDDEN", "not your session", 403)
 
-        if session.status in ("ENDED", "CANCELED"):
-            return ok({"sessionId": str(session.session_id), "status": session.status})
+        if session.status not in ("ENDED", "CANCELED"):
+            session.status = "ENDED"
+            session.ended_at = timezone.now()
+            session.save(update_fields=["status", "ended_at"])
+            save_session_state(session, status="ENDED")
 
-        session.status = "ENDED"
-        session.ended_at = timezone.now()
-        session.save(update_fields=["status", "ended_at"])
-
-        # Redis에도 종료 반영 (둘 중 하나 선택)
-        save_session_state(session, status="ENDED")
-        # 해커톤이면 종료 시 바로 삭제하고 싶으면 아래로 바꾸기:
-        # delete_session_state(str(session.session_id))
-
-        return ok({"sessionId": str(session.session_id), "status": session.status})
+        # 문서대로: ended만 반환 (envelope 없이)
+        return Response({"ended": True})

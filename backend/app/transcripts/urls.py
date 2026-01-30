@@ -3,8 +3,8 @@ from django.urls import path
 from .views import TranscriptCreateView
 
 urlpatterns = [
+    path("match/sessions/<str:session_id>/transcripts", TranscriptCreateView.as_view()),
     path(
-        "match/sessions/<str:session_id>/transcripts/",
-        TranscriptCreateView.as_view(),
+        "match/sessions/<str:session_id>/transcripts/", TranscriptCreateView.as_view()
     ),
 ]

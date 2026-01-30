@@ -73,6 +73,7 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "EXCEPTION_HANDLER": "app.common.exceptions.custom_exception_handler",
 }
 
 from datetime import timedelta
@@ -119,4 +120,3 @@ APPEND_SLASH = False
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 AUTH_USER_MODEL = "users.User"
-
