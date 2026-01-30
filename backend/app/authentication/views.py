@@ -255,10 +255,10 @@ class IdCardOcrView(APIView):
             return fail("VALIDATION_ERROR", "id_image is required")
 
         # 더미(또는 OCR 결과) + onboardingToken
-        name = "김순자"
-        gender = "F"
-        birth_date = "1953-09-15"
-        address = "수원시 팔달구"
+        name = "송민혁"
+        gender = "M"
+        birth_date = "1954-05-15"
+        address = "전라북도 익산시"
 
         payload = {
             "name": name,

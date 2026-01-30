@@ -12,7 +12,6 @@ from django.contrib.auth import get_user_model
 from app.friends.models import Friend
 from app.care.models import CareRelation
 
-# calls / transcripts 앱이 실제로 존재한다고 가정
 from app.calls.models import CallLog, CallAnalysis
 from app.transcripts.models import Transcript
 
@@ -24,14 +23,12 @@ def _uuid_for_field(model, field_name: str):
     - CharField  -> str(uuid)
     """
     f = model._meta.get_field(field_name)
-    # UUIDField는 "UUIDField"라는 클래스명을 갖는 경우가 많음 (직접 import 안 해도 됨)
     if f.__class__.__name__ == "UUIDField":
         return uuid.uuid4()
     return str(uuid.uuid4())
 
 
 def _dt(s: str) -> date:
-    # "YYYY-MM-DD" 문자열을 date로
     y, m, d = map(int, s.split("-"))
     return date(y, m, d)
 
@@ -45,9 +42,7 @@ class Command(BaseCommand):
         now = timezone.now()
 
         # ---------------------------------------------------------------------
-        # 0) 유저 생성 helper
-        #   - 프로젝트마다 UserManager.create_user 시그니처가 다를 수 있어서
-        #     get_or_create + set_password 로 최대한 안전하게 처리
+        # 0) 유저 upsert helper
         # ---------------------------------------------------------------------
         def upsert_user(phone_number: str, defaults: dict, password: str = "test1234!"):
             user, created = User.objects.get_or_create(
@@ -55,11 +50,11 @@ class Command(BaseCommand):
                 defaults={
                     **defaults,
                     "phone_number": phone_number,
-                    # created_at이 모델에 있든 없든 안전하게
                     "created_at": defaults.get("created_at", now),
                 },
             )
-            # 이미 있으면 값 업데이트(데모용으로 최신 상태로 맞춤)
+
+            # 데모용: 기존 유저도 defaults로 덮어씌움
             changed = False
             for k, v in defaults.items():
                 if hasattr(user, k) and getattr(user, k) != v:
@@ -75,10 +70,23 @@ class Command(BaseCommand):
             return user, created
 
         # ---------------------------------------------------------------------
-        # 1) "시연 유저(어르신)" 5명 생성
-        #    - adminpanel 1번 페이지(리스트)에 보일 대상
+        # 1) "유저(어르신)" 10명 생성
+        #    - adminpanel 1번 페이지: 복지사가 전체 유저 조회
+        #    - 송민혁 = 시연 주인공(대화/통화 탭에서 볼 유저)
         # ---------------------------------------------------------------------
-        seniors = [
+        users_data = [
+            dict(
+                phone_number="01040823455",
+                name="송민혁",
+                gender="M",
+                birth_year=1954,
+                birth_date=_dt("1954-05-15"),
+                address="전라북도 익산시",
+                profile_image_url="/static/images/profiles/senior_songminhyeok.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
             dict(
                 phone_number="01012345678",
                 name="김철수",
@@ -86,7 +94,7 @@ class Command(BaseCommand):
                 birth_year=1944,
                 birth_date=_dt("1944-05-15"),
                 address="서울시 관악구 봉천동",
-                profile_image_url="/images/profiles/senior_kimchulsu.jpg",
+                profile_image_url="/static/images/profiles/senior_kimchulsu.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
@@ -98,7 +106,7 @@ class Command(BaseCommand):
                 birth_year=1948,
                 birth_date=_dt("1948-09-03"),
                 address="서울시 강서구 화곡동",
-                profile_image_url="/images/profiles/senior_leeyounghee.jpg",
+                profile_image_url="/static/images/profiles/senior_leeyounghee.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
@@ -110,7 +118,7 @@ class Command(BaseCommand):
                 birth_year=1951,
                 birth_date=_dt("1951-01-22"),
                 address="인천시 부평구 부평동",
-                profile_image_url="/images/profiles/senior_parkminsu.jpg",
+                profile_image_url="/static/images/profiles/senior_parkminsu.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
@@ -122,7 +130,7 @@ class Command(BaseCommand):
                 birth_year=1947,
                 birth_date=_dt("1947-12-11"),
                 address="대전시 서구 둔산동",
-                profile_image_url="/images/profiles/senior_choijadu.jpg",
+                profile_image_url="/static/images/profiles/senior_choijadu.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
@@ -134,30 +142,81 @@ class Command(BaseCommand):
                 birth_year=1950,
                 birth_date=_dt("1950-06-05"),
                 address="부산시 해운대구 우동",
-                profile_image_url="/images/profiles/senior_jeongsunbok.jpg",
+                profile_image_url="/static/images/profiles/senior_jeongsunbok.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01033334444",
+                name="한경자",
+                gender="F",
+                birth_year=1952,
+                birth_date=_dt("1952-03-10"),
+                address="경기도 수원시 영통구",
+                profile_image_url="/static/images/profiles/senior_hankyeongja.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01055556666",
+                name="오정식",
+                gender="M",
+                birth_year=1946,
+                birth_date=_dt("1946-08-29"),
+                address="서울시 은평구 불광동",
+                profile_image_url="/static/images/profiles/senior_ohjeongsik.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077778888",
+                name="윤미자",
+                gender="F",
+                birth_year=1953,
+                birth_date=_dt("1953-11-02"),
+                address="광주시 북구 일곡동",
+                profile_image_url="/static/images/profiles/senior_yoonmija.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01099990000",
+                name="서동현",
+                gender="M",
+                birth_year=1949,
+                birth_date=_dt("1949-04-17"),
+                address="대구시 수성구 범어동",
+                profile_image_url="/static/images/profiles/senior_seodonghyeon.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
             ),
         ]
 
-        seniors_objs = []
-        created_count = 0
-        for s in seniors:
-            u, created = upsert_user(s["phone_number"], s)
-            seniors_objs.append(u)
+        user_objs = []
+        user_created = 0
+        for u in users_data:
+            obj, created = upsert_user(u["phone_number"], u)
+            user_objs.append(obj)
             if created:
-                created_count += 1
+                user_created += 1
+
+        # 시연 주인공
+        demo_user = User.objects.get(phone_number="01040823455")
 
         self.stdout.write(
-            self.style.SUCCESS(f"✅ seniors upserted (created={created_count})")
+            self.style.SUCCESS(f"✅ users(10) upserted (created={user_created})")
         )
 
         # ---------------------------------------------------------------------
-        # 2) "시연용 친구(통화 상대)" 5명 생성
-        #    - 시연 유저의 Friend로도 연결하고, CallLog.peer로도 활용
+        # 2) "친구(통화 상대)" 15명 생성
+        #    - 전부 demo_user(송민혁)의 친구가 됨
         # ---------------------------------------------------------------------
-        peers = [
+        friends_data = [
             dict(
                 phone_number="01077770001",
                 name="박사기",
@@ -165,7 +224,7 @@ class Command(BaseCommand):
                 birth_year=1980,
                 birth_date=_dt("1980-01-01"),
                 address="불명",
-                profile_image_url="/images/profiles/peer_unknown.jpg",
+                profile_image_url="/static/images/profiles/peer_unknown_01.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=False,
@@ -177,7 +236,7 @@ class Command(BaseCommand):
                 birth_year=1950,
                 birth_date=_dt("1950-11-20"),
                 address="부산시 영도구 동삼동",
-                profile_image_url="/images/profiles/peer_choisoonja.jpg",
+                profile_image_url="/static/images/profiles/peer_choisoonja.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
@@ -189,7 +248,7 @@ class Command(BaseCommand):
                 birth_year=1944,
                 birth_date=_dt("1944-02-10"),
                 address="경기도 수원시 팔달구",
-                profile_image_url="/images/profiles/peer_leejansu.jpg",
+                profile_image_url="/static/images/profiles/peer_leejansu.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
@@ -201,7 +260,7 @@ class Command(BaseCommand):
                 birth_year=1965,
                 birth_date=_dt("1965-04-18"),
                 address="광주시 북구",
-                profile_image_url="/images/profiles/peer_kimyuseob.jpg",
+                profile_image_url="/static/images/profiles/peer_kimyuseob.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
@@ -213,29 +272,148 @@ class Command(BaseCommand):
                 birth_year=1948,
                 birth_date=_dt("1948-03-15"),
                 address="서울시 종로구 혜화동",
-                profile_image_url="/images/profiles/peer_parkhangil.jpg",
+                profile_image_url="/static/images/profiles/peer_parkhangil.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            # --- 추가 10명 ---
+            dict(
+                phone_number="01077770006",
+                name="김영희",
+                gender="F",
+                birth_year=1951,
+                birth_date=_dt("1951-07-07"),
+                address="서울시 관악구 신림동",
+                profile_image_url="/static/images/profiles/senior_choijadu.jpgg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770007",
+                name="정태수",
+                gender="M",
+                birth_year=1950,
+                birth_date=_dt("1950-09-09"),
+                address="서울시 노원구",
+                profile_image_url="/static/images/profiles/senior_hankyeongja.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770008",
+                name="한수진",
+                gender="F",
+                birth_year=1955,
+                birth_date=_dt("1955-02-01"),
+                address="경기도 성남시",
+                profile_image_url="/static/images/profiles/senior_jeongsunbok.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770009",
+                name="최남식",
+                gender="M",
+                birth_year=1947,
+                birth_date=_dt("1947-06-21"),
+                address="충청북도 청주시",
+                profile_image_url="/static/images/profiles/senior_kimchulsu.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770010",
+                name="오말순",
+                gender="F",
+                birth_year=1949,
+                birth_date=_dt("1949-12-30"),
+                address="강원도 춘천시",
+                profile_image_url="/static/images/profiles/senior_leeyounghee.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770011",
+                name="박정호",
+                gender="M",
+                birth_year=1952,
+                birth_date=_dt("1952-04-04"),
+                address="전라남도 여수시",
+                profile_image_url="/static/images/profiles/senior_ohjeongsik.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770012",
+                name="이미숙",
+                gender="F",
+                birth_year=1956,
+                birth_date=_dt("1956-10-10"),
+                address="경상북도 포항시",
+                profile_image_url="/static/images/profiles/senior_parkminsu.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770013",
+                name="권영철",
+                gender="M",
+                birth_year=1945,
+                birth_date=_dt("1945-03-03"),
+                address="울산시 남구",
+                profile_image_url="/static/images/profiles/senior_seodonghyeon.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770014",
+                name="서정자",
+                gender="F",
+                birth_year=1954,
+                birth_date=_dt("1954-08-08"),
+                address="서울시 동작구",
+                profile_image_url="/static/images/profiles/senior_yoonmija.jpg",
+                is_welfare_worker=False,
+                is_active=True,
+                is_phone_verified=True,
+            ),
+            dict(
+                phone_number="01077770015",
+                name="조경수",
+                gender="M",
+                birth_year=1948,
+                birth_date=_dt("1948-01-19"),
+                address="경기도 고양시",
+                profile_image_url="/static/images/profiles/peer_leejansu.jpg",
                 is_welfare_worker=False,
                 is_active=True,
                 is_phone_verified=True,
             ),
         ]
 
-        peer_objs = []
-        p_created = 0
-        for p in peers:
-            u, created = upsert_user(p["phone_number"], p)
-            peer_objs.append(u)
+        friend_objs = []
+        friends_created = 0
+        for f in friends_data:
+            obj, created = upsert_user(f["phone_number"], f)
+            friend_objs.append(obj)
             if created:
-                p_created += 1
+                friends_created += 1
+
         self.stdout.write(
-            self.style.SUCCESS(f"✅ peers upserted (created={p_created})")
+            self.style.SUCCESS(f"✅ friends(15) upserted (created={friends_created})")
         )
 
         # ---------------------------------------------------------------------
-        # 3) 봉사자(복지사) 1명 생성 + (선택) admin 접근권한
-        #    - adminpanel 접근은 별도로 is_welfare_worker 체크를 쓰고 있으니
-        #      is_welfare_worker=True 는 필수.
-        #    - Django /admin 로그인까지 할 거면 is_staff=True 도 켜주자.
+        # 3) 복지사 1명 생성 (모든 유저를 볼 수 있음)
         # ---------------------------------------------------------------------
         worker_defaults = dict(
             phone_number="01099998888",
@@ -244,11 +422,12 @@ class Command(BaseCommand):
             birth_year=1995,
             birth_date=_dt("1995-02-14"),
             address="서울시 구로구",
-            profile_image_url="/images/profiles/worker_kimbokji.jpg",
+            profile_image_url="/static/images/profiles/worker_kimbokji.jpg",
             is_welfare_worker=True,
             is_active=True,
             is_phone_verified=True,
-            is_staff=True,  # ✅ /admin 로그인 필요하면
+            # /admin 로그인도 필요하면 켜기
+            is_staff=True,
             is_superuser=False,
         )
         worker, worker_created = upsert_user(
@@ -259,47 +438,48 @@ class Command(BaseCommand):
         )
 
         # ---------------------------------------------------------------------
-        # 4) CareRelation: 복지사 1명이 어르신 5명 모두 관리
+        # 4) CareRelation: 복지사 1명이 유저 10명 전부 관리
         # ---------------------------------------------------------------------
         cr_created = 0
-        for s in seniors_objs:
+        for u in user_objs:
             _, created = CareRelation.objects.get_or_create(
-                welfare_worker=worker, senior=s
+                welfare_worker=worker, senior=u
             )
             if created:
                 cr_created += 1
         self.stdout.write(
-            self.style.SUCCESS(f"✅ care_relations done (created={cr_created})")
+            self.style.SUCCESS(f"✅ care_relations (10) done (created={cr_created})")
         )
 
         # ---------------------------------------------------------------------
-        # 5) Friends: 시연 유저(김철수)에게 친구 5명 연결
+        # 5) Friend: 유저(송민혁)의 친구 15명 연결
         # ---------------------------------------------------------------------
-        demo_senior = seniors_objs[0]  # 김철수
-        f_created = 0
-        for peer in peer_objs:
+        fr_created = 0
+        for f in friend_objs:
             _, created = Friend.objects.get_or_create(
-                user=demo_senior,
-                friend_user=peer,
+                user=demo_user,
+                friend_user=f,
                 defaults={"created_at": now},
             )
             if created:
-                f_created += 1
-        self.stdout.write(self.style.SUCCESS(f"✅ friends done (created={f_created})"))
+                fr_created += 1
+        self.stdout.write(
+            self.style.SUCCESS(f"✅ demo_user friends (15) done (created={fr_created})")
+        )
 
         # ---------------------------------------------------------------------
-        # 6) Demo Scripts(대화본) 10개 + CallLog 10개 + CallAnalysis 10개
-        #    - 한 대화당 10줄 이상
-        #    - session_id 로 Transcript/CallLog 연결
+        # 6) 통화/대화 기록 10개: "송민혁 ↔ 친구" 대화로 생성
+        #    - 내용 템플릿(기존 유지)
+        #    - session_id: sess-demo-001 ~ 010
         # ---------------------------------------------------------------------
         call_templates = [
-            # (status, category, keywords, summary, peer_name_hint, safe)
+            # (status, category, keywords, summary, peer_index, safe)
             (
                 "DANGER",
                 "기관사칭",
                 ["검찰", "수사", "계좌이체", "구속"],
                 "기관 사칭 및 금전 요구 패턴 감지",
-                "박사기",
+                0,
                 False,
             ),
             (
@@ -307,7 +487,7 @@ class Command(BaseCommand):
                 "일상대화",
                 ["경로당", "식사", "날씨"],
                 "일상적인 안부 대화",
-                "최순자",
+                1,
                 True,
             ),
             (
@@ -315,70 +495,36 @@ class Command(BaseCommand):
                 "언쟁",
                 ["오해", "뒷담화", "말다툼"],
                 "감정이 격해진 말다툼",
-                "김유섭",
+                3,
                 False,
             ),
-            ("DANGER", "욕설", ["폭언", "모욕"], "지속적인 폭언 감지", "김유섭", False),
-            (
-                "WARNING",
-                "우울",
-                ["우울", "무기력"],
-                "우울감 표현 빈도 증가",
-                "박한길",
-                False,
-            ),
-            (
-                "SAFE",
-                "건강",
-                ["병원", "무릎", "주사"],
-                "건강 관련 일상 대화",
-                "이장수",
-                True,
-            ),
+            ("DANGER", "욕설", ["폭언", "모욕"], "지속적인 폭언 감지", 3, False),
+            ("WARNING", "우울", ["우울", "무기력"], "우울감 표현 빈도 증가", 4, False),
+            ("SAFE", "건강", ["병원", "무릎", "주사"], "건강 관련 일상 대화", 2, True),
             (
                 "WARNING",
                 "로맨스",
                 ["돈", "급해", "수술비"],
                 "금전 요구가 동반된 관계 유도",
-                "박사기",
+                0,
                 False,
             ),
-            (
-                "SAFE",
-                "취미",
-                ["노래교실", "꽃놀이"],
-                "긍정적인 감정 대화",
-                "최순자",
-                True,
-            ),
+            ("SAFE", "취미", ["노래교실", "꽃놀이"], "긍정적인 감정 대화", 1, True),
             (
                 "DANGER",
                 "금융유도",
                 ["대출", "인증번호", "비밀번호"],
                 "금융정보/인증 요청 패턴 감지",
-                "박사기",
+                0,
                 False,
             ),
-            (
-                "SAFE",
-                "가족",
-                ["손주", "자랑", "용돈"],
-                "가족 관련 일상 대화",
-                "최순자",
-                True,
-            ),
+            ("SAFE", "가족", ["손주", "자랑", "용돈"], "가족 관련 일상 대화", 1, True),
         ]
 
-        # peer 이름으로 매칭(없으면 첫 번째 peer 사용)
-        peer_by_name = {p.name: p for p in peer_objs}
-
         def make_dialogue_lines(senior_name: str, peer_name: str, theme: str) -> str:
-            """
-            "이름: 대화" 형태로 12줄 생성(요구: 10줄 이상).
-            """
-            base = []
+            # 12줄 이상 (이름: 대화)
             if theme == "기관사칭":
-                base = [
+                lines = [
                     f"{peer_name}: 어르신, 서울중앙지검입니다. 통장이 범죄에 연루되었어요.",
                     f"{senior_name}: 예? 제가요? 무슨 일이죠?",
                     f"{peer_name}: 지금 바로 조사해야 합니다. 통장 내역 확인하셔야 해요.",
@@ -393,7 +539,7 @@ class Command(BaseCommand):
                     f"{peer_name}: 네, 지금 말씀드리겠습니다.",
                 ]
             elif theme == "금융유도":
-                base = [
+                lines = [
                     f"{peer_name}: 어르신, 고객님 명의로 대출 신청이 들어왔습니다.",
                     f"{senior_name}: 대출이요? 저는 신청한 적이 없어요.",
                     f"{peer_name}: 본인 확인을 위해 인증번호가 필요합니다.",
@@ -408,7 +554,7 @@ class Command(BaseCommand):
                     f"{senior_name}: 죄송하지만 못 드리겠습니다.",
                 ]
             elif theme == "로맨스":
-                base = [
+                lines = [
                     f"{peer_name}: 오빠~ 나 지금 너무 급한데 잠깐만 도와줄 수 있어?",
                     f"{senior_name}: 무슨 일인데 그래?",
                     f"{peer_name}: 수술비가 모자라서… 50만 원만 빌려줘.",
@@ -423,7 +569,7 @@ class Command(BaseCommand):
                     f"{senior_name}: 가까운 사람에게 먼저 연락해 봐.",
                 ]
             elif theme == "욕설":
-                base = [
+                lines = [
                     f"{peer_name}: 야, 말귀를 못 알아듣냐?",
                     f"{senior_name}: 왜 그러세요, 말씀을 곱게 하셔야죠.",
                     f"{peer_name}: 곱게? 지금 장난하냐?",
@@ -438,7 +584,7 @@ class Command(BaseCommand):
                     f"{senior_name}: (통화 종료)",
                 ]
             elif theme == "언쟁":
-                base = [
+                lines = [
                     f"{senior_name}: 자네가 내 이야기하고 다닌다며?",
                     f"{peer_name}: 누가 그런 말을 해? 오해야.",
                     f"{senior_name}: 오해라기엔 들은 사람이 여럿이야.",
@@ -453,7 +599,7 @@ class Command(BaseCommand):
                     f"{peer_name}: 응, 끊을게.",
                 ]
             elif theme == "우울":
-                base = [
+                lines = [
                     f"{senior_name}: 요즘은 그냥 아무것도 하기 싫어.",
                     f"{peer_name}: 무슨 일 있어? 목소리가 힘이 없네.",
                     f"{senior_name}: 자식들도 연락이 없고… 혼자인 느낌이야.",
@@ -468,7 +614,7 @@ class Command(BaseCommand):
                     f"{peer_name}: 오늘은 푹 쉬어.",
                 ]
             elif theme == "건강":
-                base = [
+                lines = [
                     f"{peer_name}: 무릎은 좀 어때? 비 오면 쑤시지 않아?",
                     f"{senior_name}: 어제 병원 갔다 왔지. 주사 맞았어.",
                     f"{peer_name}: 의사 선생님이 뭐래?",
@@ -483,7 +629,7 @@ class Command(BaseCommand):
                     f"{senior_name}: 괜찮아. 필요하면 연락할게.",
                 ]
             elif theme == "취미":
-                base = [
+                lines = [
                     f"{peer_name}: 어르신, 요즘 노래교실은 다니세요?",
                     f"{senior_name}: 응, 이번에 새 노래 배웠지.",
                     f"{peer_name}: 뭐 배웠어요?",
@@ -498,7 +644,7 @@ class Command(BaseCommand):
                     f"{senior_name}: 고맙네.",
                 ]
             elif theme == "가족":
-                base = [
+                lines = [
                     f"{senior_name}: 우리 손주가 이번에 취직했다더라.",
                     f"{peer_name}: 어머, 정말요? 축하드려요!",
                     f"{senior_name}: 용돈도 부쳐줬어. 마음이 참 고맙지.",
@@ -512,8 +658,8 @@ class Command(BaseCommand):
                     f"{senior_name}: 고맙다. 너도 잘 자라.",
                     f"{peer_name}: 네, 안녕히 주무세요.",
                 ]
-            else:  # 기본
-                base = [
+            else:
+                lines = [
                     f"{peer_name}: 안녕하세요, 어르신.",
                     f"{senior_name}: 어, 반갑네.",
                     f"{peer_name}: 오늘은 날씨가 좀 춥죠.",
@@ -527,28 +673,22 @@ class Command(BaseCommand):
                     f"{peer_name}: 안녕히 계세요.",
                     f"{senior_name}: 응.",
                 ]
-            return "\n".join(base)
+            return "\n".join(lines)
 
-        # 10개 생성
         call_created = analysis_created = transcript_created = 0
 
-        for idx, (
-            status,
-            category,
-            keywords,
-            summary,
-            peer_name_hint,
-            safe,
-        ) in enumerate(call_templates, start=1):
+        for idx, (status, category, keywords, summary, peer_index, safe) in enumerate(
+            call_templates, start=1
+        ):
             session_id = f"sess-demo-{idx:03d}"
+            peer = friend_objs[peer_index % len(friend_objs)]
 
-            peer = peer_by_name.get(peer_name_hint) or peer_objs[0]
             started_at = now - timedelta(days=(10 - idx), hours=idx)
             ended_at = started_at + timedelta(minutes=3 + idx, seconds=10 * idx)
 
             call, created = CallLog.objects.get_or_create(
                 session_id=session_id,
-                senior=demo_senior,
+                senior=demo_user,
                 peer=peer,
                 defaults={
                     "call_id": _uuid_for_field(CallLog, "call_id"),
@@ -573,9 +713,8 @@ class Command(BaseCommand):
             if a_created_flag:
                 analysis_created += 1
 
-            # Transcript: session_id 당 1개 (text에 12줄 이상)
             text = make_dialogue_lines(
-                demo_senior.name or "어르신", peer.name or "상대방", category
+                demo_user.name or "송민혁", peer.name or "상대방", category
             )
             _, t_created_flag = Transcript.objects.get_or_create(
                 session_id=session_id,
@@ -589,68 +728,17 @@ class Command(BaseCommand):
                 transcript_created += 1
 
         self.stdout.write(
-            self.style.SUCCESS(f"✅ demo call_logs done (created={call_created})")
+            self.style.SUCCESS(f"✅ call_logs (10) done (created={call_created})")
         )
         self.stdout.write(
             self.style.SUCCESS(
-                f"✅ demo call_analyses done (created={analysis_created})"
+                f"✅ call_analyses (10) done (created={analysis_created})"
             )
         )
         self.stdout.write(
             self.style.SUCCESS(
-                f"✅ demo transcripts done (created={transcript_created})"
+                f"✅ transcripts (10) done (created={transcript_created})"
             )
         )
 
-        # ---------------------------------------------------------------------
-        # 7) (옵션) 다른 어르신들도 통화기록 몇 개 넣어두면 1번 페이지가 더 풍성해짐
-        # ---------------------------------------------------------------------
-        extra_created = 0
-        other_seniors = seniors_objs[1:]  # 김철수 제외
-        for s_idx, s in enumerate(other_seniors, start=1):
-            # 각 어르신당 2통화씩만
-            for j in range(2):
-                session_id = f"sess-extra-{s_idx}-{j}"
-                peer = peer_objs[(s_idx + j) % len(peer_objs)]
-                st = now - timedelta(days=3 + s_idx, hours=j)
-                ed = st + timedelta(minutes=5)
-
-                call, created = CallLog.objects.get_or_create(
-                    session_id=session_id,
-                    senior=s,
-                    peer=peer,
-                    defaults={
-                        "call_id": _uuid_for_field(CallLog, "call_id"),
-                        "started_at": st,
-                        "ended_at": ed,
-                        "created_at": ed,
-                    },
-                )
-                if created:
-                    extra_created += 1
-
-                CallAnalysis.objects.get_or_create(
-                    call_log=call,
-                    defaults={
-                        "status": "SAFE",
-                        "category": "일상대화",
-                        "keywords": ["안부", "날씨"],
-                        "summary": "일상적인 안부 대화",
-                        "created_at": ed,
-                    },
-                )
-                Transcript.objects.get_or_create(
-                    session_id=session_id,
-                    defaults={
-                        "text": make_dialogue_lines(
-                            s.name or "어르신", peer.name or "상대방", "가족"
-                        ),
-                        "safe": True,
-                        "created_at": ed,
-                    },
-                )
-
-        self.stdout.write(
-            self.style.SUCCESS(f"✅ extra call_logs seeded (created={extra_created})")
-        )
         self.stdout.write(self.style.SUCCESS("🎉 seed_dummy finished"))
