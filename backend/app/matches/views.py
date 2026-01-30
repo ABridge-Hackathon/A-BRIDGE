@@ -74,4 +74,4 @@ class MatchEndView(APIView):
         # 해커톤이면 종료 시 바로 삭제하고 싶으면 아래로 바꾸기:
         # delete_session_state(str(session.session_id))
 
-        return ok({"sessionId": str(session.session_id), "status": session.status})a
+        return ok({"sessionId": str(session.session_id), "status": session.status})

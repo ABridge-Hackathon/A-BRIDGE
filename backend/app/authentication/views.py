@@ -134,3 +134,4 @@ class WithdrawView(APIView):
         user.is_active = False
         user.save(update_fields=["is_active"])
         return ok({"withdrawn": True})
+
