@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "노인도 아픈 게 보통 일이 아니라는거야",
+    "scriptId" : "노인대화-08178",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_08178.wav",
+    "recrdTime" : "4.610",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2021-01-18 11:23:08",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "나이 먹어서 든든해야 되는데 참 그게 보통 일은 아니야",
+    "scriptId" : "노인대화-08181",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_08181.wav",
+    "recrdTime" : "5.890",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2021-01-18 11:23:53",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

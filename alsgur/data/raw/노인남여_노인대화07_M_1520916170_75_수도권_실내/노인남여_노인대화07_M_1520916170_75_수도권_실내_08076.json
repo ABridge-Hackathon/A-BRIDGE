@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "어떻게 해야 되나 하고 늘 걱정이야 ",
+    "scriptId" : "노인대화-08076",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_08076.wav",
+    "recrdTime" : "5.550",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2021-01-08 19:37:32",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

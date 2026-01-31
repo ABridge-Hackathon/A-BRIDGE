@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "운동장을 걷는다잖아 그 뭐 운동도 중요한 요소가 되겠지만 ",
+    "scriptId" : "노인대화-07977",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_07977.wav",
+    "recrdTime" : "6.910",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2020-12-17 00:26:43",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}

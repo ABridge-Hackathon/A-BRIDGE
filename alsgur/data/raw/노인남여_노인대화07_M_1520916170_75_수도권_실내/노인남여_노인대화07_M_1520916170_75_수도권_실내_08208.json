@@ -1,0 +1,23 @@
+{
+  "발화정보" : {
+    "stt" : "천저 천지차이더라 이거야 차이가 너무 많이 나요",
+    "scriptId" : "노인대화-08208",
+    "fileNm" : "노인남여_노인대화07_M_1520916170_75_수도권_실내_08208.wav",
+    "recrdTime" : "7.250",
+    "recrdQuality" : "16K",
+    "recrdDt" : "2021-01-21 21:12:56",
+    "scriptSetNo" : "T_노인대화_7"
+  },
+  "대화정보" : {
+    "recrdEnvrn" : "실내",
+    "colctUnitCode" : "AI 챗봇",
+    "cityCode" : "수도권",
+    "recrdUnit" : "AndroidOS",
+    "convrsThema" : " 건강/다이어트 "
+  },
+  "녹음자정보" : {
+    "gender" : "남",
+    "recorderId" : "1520916170",
+    "age" : 75
+  }
+}
