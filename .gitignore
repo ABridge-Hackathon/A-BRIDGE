@@ -12,3 +12,5 @@ __pycache__/
 
 # 결과 파일 (선택사항)
 recommendation_results.json
+
+.gitignore
